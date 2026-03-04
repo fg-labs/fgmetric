@@ -70,7 +70,7 @@ class CounterPivotTable(BaseModel):
         if len(counter_fieldnames) > 1:
             raise TypeError(
                 "Only one Counter per model is currently supported. "
-                f"Found multiple fields with Counter types: {', '.join(counter_fieldnames)}"
+                f"Found multiple Counter fields: {', '.join(counter_fieldnames)}"
             )
 
         counter_fieldname: str | None = counter_fieldnames[0] if counter_fieldnames else None
@@ -78,7 +78,7 @@ class CounterPivotTable(BaseModel):
         if counter_fieldname:
             counter_field_info: FieldInfo = cls.model_fields[counter_fieldname]
             if is_optional(counter_field_info.annotation):
-                raise TypeError(f"Optional Counters are not supported: {counter_fieldname}")
+                raise TypeError(f"Optional Counter fields are not supported: '{counter_fieldname}'")
 
         return counter_fieldname
 
@@ -109,7 +109,8 @@ class CounterPivotTable(BaseModel):
             enum_cls: type[StrEnum] = args[0]
         else:
             raise TypeError(
-                f"Counter fields must have a StrEnum type parameter: {cls._counter_fieldname}"
+                f"Counter fields must have a StrEnum type parameter,"
+                f" got {info.annotation} for field '{cls._counter_fieldname}'"
             )
 
         return enum_cls
