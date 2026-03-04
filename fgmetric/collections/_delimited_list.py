@@ -41,11 +41,14 @@ class DelimitedList(BaseModel):
         `["a", "b", "c"]`. Avoid using delimiters that may appear in element values.
 
     Examples:
-        Basic usage with comma delimiter (default):
+        Basic usage — comma delimiter (default):
 
         ```python
         class MyMetric(Metric):
             tags: list[int]  # "1,2,3" becomes [1, 2, 3]
+
+        MyMetric.model_validate({"tags": "1,2,3"}).tags        # -> [1, 2, 3]
+        MyMetric(tags=[1, 2, 3]).model_dump()  # -> {"tags": "1,2,3"}
         ```
 
         Custom delimiter:
@@ -54,20 +57,29 @@ class DelimitedList(BaseModel):
         class MyMetric(Metric):
             collection_delimiter = ";"
             tags: list[int]  # "1;2;3" becomes [1, 2, 3]
+
+        MyMetric.model_validate({"tags": "1;2;3"}).tags        # -> [1, 2, 3]
+        MyMetric(tags=[1, 2, 3]).model_dump()  # -> {"tags": "1;2;3"}
         ```
 
-        Optional list field:
+        Optional list field — the whole field may be absent:
 
         ```python
         class MyMetric(Metric):
             tags: list[int] | None  # "" becomes None
+
+        MyMetric.model_validate({"tags": ""}).tags             # -> None
+        MyMetric(tags=None).model_dump()   # -> {"tags": None}
         ```
 
-        List field with Optional elements:
+        List with optional elements — individual elements may be absent:
 
         ```python
         class MyMetric(Metric):
             tags: list[int | None]  # "1,,3" becomes [1, None, 3]
+
+        MyMetric.model_validate({"tags": "1,,3"}).tags         # -> [1, None, 3]
+        MyMetric(tags=[1, None, 3]).model_dump()  # -> {"tags": "1,,3"}
         ```
     """
 

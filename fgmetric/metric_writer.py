@@ -26,13 +26,12 @@ class MetricWriter[T: Metric](AbstractContextManager):
             mapping_quality: int
             is_duplicate: bool = False
 
-        # Write metrics to a TSV file
         metrics = [
             AlignmentMetric(read_name="read1", mapping_quality=60, is_duplicate=False),
             AlignmentMetric(read_name="read2", mapping_quality=30, is_duplicate=True),
         ]
 
-        with MetricWriter(AlignmentMetric, "output.txt") as writer:
+        with MetricWriter(AlignmentMetric, Path("output.tsv")) as writer:
             writer.writeall(metrics)
         ```
 

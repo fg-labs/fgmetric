@@ -35,6 +35,43 @@ class CounterPivotTable(BaseModel):
 
     **IMPORTANT:** As with all Python mixins, this class must precede `Metric` when declaring a
     *metric's parent classes, in order for its methods to take precedence over `Metric`'s defaults.
+
+    Examples:
+        Defining a metric with a pivot-table counter:
+
+        ```python
+        class Color(StrEnum):
+            RED = "red"
+            GREEN = "green"
+            BLUE = "blue"
+
+        class MyMetric(CounterPivotTable, Metric):
+            name: str
+            counts: Counter[Color]
+        ```
+
+        Deserialization — wide columns are folded into the Counter:
+
+        ```python
+        row = {"name": "foo", "red": 10, "green": 20, "blue": 30}
+        m = MyMetric.model_validate(row)
+        m.counts  # Counter({Color.RED: 10, Color.GREEN: 20, Color.BLUE: 30})
+        ```
+
+        Serialization — the Counter is pivoted back to wide columns:
+
+        ```python
+        m.model_dump()
+        # {"name": "foo", "red": 10, "green": 20, "blue": 30}
+        ```
+
+        Missing enum members default to zero:
+
+        ```python
+        row = {"name": "foo", "red": 5}
+        m = MyMetric.model_validate(row)
+        m.counts  # Counter({Color.RED: 5, Color.GREEN: 0, Color.BLUE: 0})
+        ```
     """
 
     _counter_fieldname: ClassVar[str | None]
@@ -62,6 +99,25 @@ class CounterPivotTable(BaseModel):
         Raises:
             TypeError: If the user-specified model includes more than one field annotated as
                 `Counter[T]`.
+
+        Examples:
+            >>> # One counter field -> returns its name
+            >>> class M(CounterPivotTable, Metric):
+            ...     counts: Counter[Color]
+            >>> M._counter_fieldname
+            'counts'
+
+            >>> # No counter field -> returns None
+            >>> class M(CounterPivotTable, Metric):
+            ...     name: str
+            >>> M._counter_fieldname
+            None
+
+            >>> # Two counter fields -> raises TypeError
+            >>> class M(CounterPivotTable, Metric):
+            ...     counts_a: Counter[Color]
+            ...     counts_b: Counter[Color]
+            TypeError: Only one Counter per model is currently supported. ...
         """
         counter_fieldnames = [
             name for name, info in cls.model_fields.items() if is_counter(info.annotation)
@@ -97,6 +153,16 @@ class CounterPivotTable(BaseModel):
         Raises:
             TypeError: If the user-specified model includes a Counter field with a type parameter
                 that is not a subclass of `StrEnum`.
+
+        Examples:
+            >>> class M(CounterPivotTable, Metric):
+            ...     counts: Counter[Color]   # Color is a StrEnum
+            >>> M._counter_enum
+            <enum 'Color'>
+
+            >>> class M(CounterPivotTable, Metric):
+            ...     counts: Counter[int]     # int is not a StrEnum
+            TypeError: Counter fields must have a StrEnum type parameter: ...
         """
         if cls._counter_fieldname is None:
             # No counter fields -> short-circuit
@@ -171,7 +237,14 @@ class CounterPivotTable(BaseModel):
         nxt: SerializerFunctionWrapHandler,  # noqa: ARG002
         info: SerializationInfo,  # noqa: ARG002
     ) -> dict[str, Any]:
-        """Pivot the Counter values out wide."""
+        """
+        Pivot the Counter values out wide.
+
+        Example:
+            Given ``counts = Counter({Color.RED: 10, Color.GREEN: 20, Color.BLUE: 30})``,
+            the output dict will contain ``{"red": 10, "green": 20, "blue": 30}`` in place
+            of ``{"counts": Counter(...)}``.
+        """
         # Call the default serializer
         data: dict[str, Any] = nxt(self)
 

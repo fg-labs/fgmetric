@@ -34,6 +34,18 @@ def is_optional(annotation: TypeAnnotation | None) -> bool:
     Returns:
         True if the type is a union type containing `None`.
         False otherwise.
+
+    Examples:
+        >>> is_optional(int | None)
+        True
+        >>> is_optional(int | str | None)
+        True
+        >>> is_optional(int)
+        False
+        >>> is_optional(list[int])
+        False
+        >>> is_optional(None)
+        False
     """
     if annotation is None:
         return False
@@ -61,6 +73,16 @@ def unpack_optional(annotation: TypeAnnotation) -> TypeAnnotation:
 
     Raises:
         ValueError: If the input is not an optional type.
+
+    Examples:
+        >>> unpack_optional(int | None)
+        <class 'int'>
+        >>> unpack_optional(int | str | None)
+        int | str
+        >>> unpack_optional(list[int] | None)
+        list[int]
+        >>> unpack_optional(int)  # not optional
+        ValueError: Type is not Optional: <class 'int'>
     """
     if not is_optional(annotation):
         raise ValueError(f"Type is not Optional: {annotation}")
@@ -80,7 +102,19 @@ def unpack_optional(annotation: TypeAnnotation) -> TypeAnnotation:
 
 
 def has_optional_elements(annotation: TypeAnnotation | None) -> bool:
-    """True if annotation is a list with optional element type (e.g., list[int | None])."""
+    """
+    True if annotation is a list with optional element type (e.g., list[int | None]).
+
+    Examples:
+        >>> has_optional_elements(list[int | None])
+        True
+        >>> has_optional_elements(list[int | None] | None)
+        True
+        >>> has_optional_elements(list[int])
+        False
+        >>> has_optional_elements(list[int] | None)
+        False
+    """
     if annotation is None:
         return False
 
@@ -106,6 +140,14 @@ def has_origin(annotation: TypeAnnotation | None, origin: type) -> bool:
     Returns:
         True if the annotation is a parameterized instance of `origin`.
         False otherwise.
+
+    Examples:
+        >>> has_origin(list[int], list)
+        True
+        >>> has_origin(list[int] | None, list)
+        True
+        >>> has_origin(set[int], list)
+        False
     """
     if annotation is None:
         return False
@@ -122,10 +164,32 @@ def is_list(annotation: TypeAnnotation | None) -> bool:
     Check if a type annotation is a list type.
 
     Matches `list[T]`, `Optional[list[T]]`, and `list[T] | None`.
+
+    Examples:
+        >>> is_list(list[int])
+        True
+        >>> is_list(list[int] | None)
+        True
+        >>> is_list(set[int])
+        False
+        >>> is_list(list)  # bare list, no type parameter
+        False
     """
     return has_origin(annotation, list)
 
 
 def is_counter(annotation: TypeAnnotation | None) -> bool:
-    """True if the type annotation is a Counter."""
+    """
+    True if the type annotation is a Counter.
+
+    Examples:
+        >>> is_counter(Counter[str])
+        True
+        >>> is_counter(Counter[str] | None)
+        True
+        >>> is_counter(dict[str, int])
+        False
+        >>> is_counter(Counter)  # bare Counter, no type parameter
+        False
+    """
     return has_origin(annotation, Counter)
