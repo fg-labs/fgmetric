@@ -106,7 +106,7 @@ class MetricWriter[T: Metric](AbstractContextManager):
             TypeError: If the provided `metric` is not an instance of the Metric class used to
                 parametrize the writer.
         """
-        self._writer.writerow(metric.model_dump())
+        self._writer.writerow(metric.model_dump(mode="json"))
 
     def writeall(self, metrics: Iterable[T]) -> None:
         """
