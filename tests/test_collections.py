@@ -204,6 +204,24 @@ def test_counter_pivot_table_of_enum(tmp_path: Path) -> None:
             next(f)
 
 
+def test_counter_pivot_table_model_dump_json_mode() -> None:
+    """Test that model_dump(mode='json') works with Counter pivot tables."""
+
+    @unique
+    class FakeEnum(StrEnum):
+        FOO = "foo"
+        BAR = "bar"
+
+    class FakeMetric(Metric):
+        name: str
+        counts: Counter[FakeEnum]
+
+    metric = FakeMetric(name="test", counts=Counter({FakeEnum.FOO: 1, FakeEnum.BAR: 2}))
+    result = metric.model_dump(mode="json")
+
+    assert result == {"name": "test", "foo": 1, "bar": 2}
+
+
 def test_counter_pivot_table_missing_enum_members_default_to_zero(tmp_path: Path) -> None:
     """Test that missing enum members in input default to 0."""
 

@@ -181,6 +181,7 @@ class CounterPivotTable(BaseModel):
         # Replace the counter field with keys for each of its enum's members
         counts = data.pop(self._counter_fieldname)
         for key, count in counts.items():
-            data[key.value] = count
+            column_name = key if isinstance(key, str) else key.value
+            data[column_name] = count
 
         return data

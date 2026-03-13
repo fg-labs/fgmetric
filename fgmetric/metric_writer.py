@@ -97,7 +97,9 @@ class MetricWriter[T: Metric](AbstractContextManager):
         """
         Write a single Metric instance to file.
 
-        The Metric is converted to a dictionary and then written using the underlying `DictWriter`.
+        The Metric is serialized using ``model_dump(mode="json")`` and then written using the
+        underlying `DictWriter`. JSON mode ensures that all field values (e.g., enums) are
+        converted to JSON-compatible types before writing.
 
         Args:
             metric: An instance of the specified Metric.
@@ -106,7 +108,7 @@ class MetricWriter[T: Metric](AbstractContextManager):
             TypeError: If the provided `metric` is not an instance of the Metric class used to
                 parametrize the writer.
         """
-        self._writer.writerow(metric.model_dump())
+        self._writer.writerow(metric.model_dump(mode="json"))
 
     def writeall(self, metrics: Iterable[T]) -> None:
         """
