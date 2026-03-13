@@ -4,7 +4,7 @@ from io import TextIOWrapper
 from pathlib import Path
 from types import TracebackType
 from typing import Iterable
-from typing import Type
+from typing import Self
 
 from fgmetric.metric import Metric
 
@@ -43,7 +43,7 @@ class MetricWriter[T: Metric](AbstractContextManager):
 
     _metric_class: type[T]
     _fout: TextIOWrapper
-    _writer: DictWriter
+    _writer: DictWriter[str]
 
     def __init__(
         self,
@@ -77,12 +77,12 @@ class MetricWriter[T: Metric](AbstractContextManager):
             self._fout.close()
             raise
 
-    def __enter__(self) -> "MetricWriter":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(
         self,
-        exc_type: Type[BaseException] | None = None,
+        exc_type: type[BaseException] | None = None,
         exc_value: BaseException | None = None,
         traceback: TracebackType | None = None,
     ) -> None:

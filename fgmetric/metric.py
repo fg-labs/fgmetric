@@ -3,8 +3,7 @@ from csv import DictReader
 from pathlib import Path
 from typing import Any
 from typing import Iterator
-from typing import Type
-from typing import TypeVar
+from typing import Self
 
 from pydantic import BaseModel
 from pydantic import model_validator
@@ -12,8 +11,6 @@ from pydantic import model_validator
 from fgmetric._typing_extensions import is_optional
 from fgmetric.collections import CounterPivotTable
 from fgmetric.collections import DelimitedList
-
-T = TypeVar("T", bound="Metric")
 
 
 class Metric(
@@ -59,7 +56,7 @@ class Metric(
     """
 
     @classmethod
-    def read(cls: Type[T], path: Path, delimiter: str = "\t") -> Iterator[T]:
+    def read(cls, path: Path, delimiter: str = "\t") -> Iterator[Self]:
         """Read Metric instances from file."""
         # NOTE: the utf-8-sig encoding is required to auto-remove BOM from input file headers
         with path.open(encoding="utf-8-sig") as fin:
