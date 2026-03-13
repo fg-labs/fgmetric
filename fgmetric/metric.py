@@ -82,6 +82,8 @@ class Metric(
             # short circuit
             return data
 
+        data = dict(data)
+
         for field, value in data.items():
             info = cls.model_fields.get(field)
             if info is None:
