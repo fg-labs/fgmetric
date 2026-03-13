@@ -101,7 +101,8 @@ class DelimitedList(BaseModel):
         """Require collection delimiters to be single characters."""
         if len(cls.collection_delimiter) != 1:
             raise ValueError(
-                f"Class collection delimiter must be a single character: {cls.collection_delimiter}"
+                "collection_delimiter must be a single character,"
+                f" got: {cls.collection_delimiter!r}"
             )
 
     @final
