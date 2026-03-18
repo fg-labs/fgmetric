@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name            = "fgmetric"
-version         = "0.1.0"
+version         = "0.2.0"
 description     = "Pydantic-backed Metric."
 readme          = "README.md"
 authors         = [{ name="Fulcrum Genomics LLC", email="contact@fulcrumgenomics.com" }]
