@@ -2,6 +2,7 @@
 
 Type-validated Python models for delimited data files.
 
+[![Docs](https://readthedocs.org/projects/fgmetric/badge/?version=stable)](https://fgmetric.readthedocs.io/)
 [![CI](https://github.com/fulcrumgenomics/fgmetric/actions/workflows/python_package.yml/badge.svg?branch=main)](https://github.com/fulcrumgenomics/fgmetric/actions/workflows/python_package.yml?query=branch%3Amain)
 [![Python Versions](https://img.shields.io/badge/python-3.12_|_3.13-blue)](https://github.com/fulcrumgenomics/fgmetric)
 [![MyPy Checked](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)

@@ -31,6 +31,7 @@ classifiers     = [
 "homepage" = "https://github.com/fulcrumgenomics/fgmetric"
 "repository" = "https://github.com/fulcrumgenomics/fgmetric"
 "Bug Tracker" = "https://github.com/fulcrumgenomics/fgmetric/issues"
+"documentation" = "https://fgmetric.readthedocs.io/"
 
 [dependency-groups]
 dev = [
@@ -44,6 +45,11 @@ dev = [
 ]
 ipython = [
     "ipython ~=9.2",
+]
+docs = [
+    "mkdocs>=1.6.1,<2",
+    "mkdocs-material ~=9.6",
+    "mkdocstrings[python] ~=0.29",
 ]
 
 [project.optional-dependencies]
@@ -81,6 +87,9 @@ fix-and-check-all.sequence    = [
     "check-typing",
     "check-tests"
 ]
+
+docs-build = "mkdocs build --strict"
+docs-serve = "mkdocs serve"
 
 benchmark = "pytest --no-cov --benchmark-group-by param:num_rows --override-ini testpaths=tests/benchmarks"
 

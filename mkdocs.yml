@@ -1,0 +1,63 @@
+site_name: fgmetric
+site_url: https://fgmetric.readthedocs.io/en/stable/
+site_description: Type-validated Python models for delimited data files.
+repo_name: fulcrumgenomics/fgmetric
+repo_url: https://github.com/fulcrumgenomics/fgmetric
+
+nav:
+  - Home: index.md
+  - User Guide: guide.md
+  - API Reference:
+      - Metric: api/metric.md
+      - MetricWriter: api/metric_writer.md
+  - Benchmarks: benchmarks.md
+  - Contributing: contributing.md
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.sections
+    - navigation.top
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      base_path: ["."]
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            merge_init_into_class: true
+            members_order: source
+            separate_signature: true
+            show_root_heading: true
+            show_source: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
