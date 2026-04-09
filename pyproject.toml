@@ -28,9 +28,9 @@ classifiers     = [
 ]
 
 [project.urls]
-"homepage" = "https://github.com/fulcrumgenomics/fgmetric"
-"repository" = "https://github.com/fulcrumgenomics/fgmetric"
-"Bug Tracker" = "https://github.com/fulcrumgenomics/fgmetric/issues"
+"homepage" = "https://github.com/fg-labs/fgmetric"
+"repository" = "https://github.com/fg-labs/fgmetric"
+"Bug Tracker" = "https://github.com/fg-labs/fgmetric/issues"
 
 [dependency-groups]
 dev = [
