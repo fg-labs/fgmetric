@@ -298,6 +298,76 @@ def test_read_extra_columns_ignored(tmp_path: Path) -> None:
 
 
 # ======================================================================================
+# Headerless file tests (explicit fieldnames)
+# ======================================================================================
+
+
+def test_read_headerless_with_fieldnames(tmp_path: Path) -> None:
+    """Reading a headerless TSV with `fieldnames` treats every row as data."""
+    fpath = tmp_path / "metrics.tsv"
+    # Three data rows, no header
+    fpath.write_text("foo\t1\nbar\t2\nbaz\t3\n")
+
+    metrics = list(SimpleMetric.read(fpath, fieldnames=["name", "count"]))
+
+    assert [m.name for m in metrics] == ["foo", "bar", "baz"]
+    assert [m.count for m in metrics] == [1, 2, 3]
+
+
+def test_read_headerless_with_alias(tmp_path: Path) -> None:
+    """`fieldnames` may reference a field's alias, mirroring header-based reading."""
+    fpath = tmp_path / "metrics.tsv"
+    fpath.write_text("foo\t100\n")
+
+    metrics = list(MetricWithAlias.read(fpath, fieldnames=["name", "count"]))
+
+    assert metrics[0].name == "foo"
+    assert metrics[0].read_count == 100
+
+
+def test_read_headerless_missing_required_field_raises(tmp_path: Path) -> None:
+    """A headerless file missing a required field still raises ValidationError."""
+    fpath = tmp_path / "metrics.tsv"
+    fpath.write_text("foo\n")
+
+    with pytest.raises(ValidationError):
+        list(SimpleMetric.read(fpath, fieldnames=["name"]))
+
+
+def test_read_headerless_row_missing_column_raises(tmp_path: Path) -> None:
+    """When a row has fewer values than `fieldnames`, missing required fields raise."""
+    fpath = tmp_path / "metrics.tsv"
+    # Row only has "name", "count" is missing
+    fpath.write_text("foo\n")
+
+    with pytest.raises(ValidationError):
+        list(SimpleMetric.read(fpath, fieldnames=["name", "count"]))
+
+
+def test_read_headerless_short_row_among_valid_rows_raises(tmp_path: Path) -> None:
+    """A single short row among otherwise-valid rows still raises ValidationError."""
+    fpath = tmp_path / "metrics.tsv"
+    # The middle row is missing the "count" value
+    fpath.write_text("foo\t1\nbar\nbaz\t3\n")
+
+    with pytest.raises(ValidationError):
+        list(SimpleMetric.read(fpath, fieldnames=["name", "count"]))
+
+
+def test_read_headerless_row_extra_column_ignored(tmp_path: Path) -> None:
+    """When a row has more values than `fieldnames`, the extras are ignored."""
+    fpath = tmp_path / "metrics.tsv"
+    # Row has an extra value not covered by fieldnames
+    fpath.write_text("foo\t1\textra\n")
+
+    metrics = list(SimpleMetric.read(fpath, fieldnames=["name", "count"]))
+
+    assert len(metrics) == 1
+    assert metrics[0].name == "foo"
+    assert metrics[0].count == 1
+
+
+# ======================================================================================
 # Parent/subclass tests
 # ======================================================================================
 

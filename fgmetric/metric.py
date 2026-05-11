@@ -1,4 +1,5 @@
 from abc import ABC
+from collections.abc import Sequence
 from csv import DictReader
 from pathlib import Path
 from typing import Any
@@ -56,19 +57,36 @@ class Metric(
     """
 
     @classmethod
-    def read(cls, path: Path, delimiter: str = "\t") -> Iterator[Self]:
+    def read(
+        cls,
+        path: Path,
+        delimiter: str = "\t",
+        fieldnames: Sequence[str] | None = None,
+    ) -> Iterator[Self]:
         """
         Read Metric instances from file.
 
         Example:
+            Reading a file that has a header row:
+
             ```python
             for m in AlignmentMetric.read(Path("out.tsv")):
+                print(m.read_name, m.mapping_quality)
+            ```
+
+            Reading a headerless file by supplying column names:
+
+            ```python
+            for m in AlignmentMetric.read(
+                Path("out.tsv"),
+                fieldnames=["read_name", "mapping_quality"],
+            ):
                 print(m.read_name, m.mapping_quality)
             ```
         """
         # NOTE: the utf-8-sig encoding is required to auto-remove BOM from input file headers
         with path.open(encoding="utf-8-sig") as fin:
-            for record in DictReader(fin, delimiter=delimiter):
+            for record in DictReader(fin, fieldnames=fieldnames, delimiter=delimiter):
                 yield cls.model_validate(record)
 
     # NB: "Before" validators (mode="before") run before field validators such as
