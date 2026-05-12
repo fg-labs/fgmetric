@@ -1,5 +1,7 @@
 from abc import ABC
+from collections.abc import Sequence
 from csv import DictReader
+from itertools import chain
 from pathlib import Path
 from typing import Any
 from typing import Iterator
@@ -56,19 +58,67 @@ class Metric(
     """
 
     @classmethod
-    def read(cls, path: Path, delimiter: str = "\t") -> Iterator[Self]:
+    def read(
+        cls,
+        path: Path,
+        delimiter: str = "\t",
+        fieldnames: Sequence[str] | None = None,
+    ) -> Iterator[Self]:
         """
         Read Metric instances from file.
 
+        By default, when `fieldnames` is omitted, the first row of the input file is read as
+        the header.
+
+        When `fieldnames` is supplied, the file is assumed to be headerless and every row is
+        read as data. Rows shorter than `fieldnames` produce `None` for the missing fields,
+        which then go through normal model validation (raising `ValidationError` for required
+        fields).
+
+        As a safeguard, if the first row exactly matches `fieldnames` it is treated as a
+        forgotten header and `ValueError` is raised. Passing `fieldnames` is not a way to
+        override an existing header - to map differently-named header columns to model fields,
+        declare Pydantic field aliases on the `Metric` subclass.
+
+        Raises:
+            ValueError: If `fieldnames` is supplied and the first row appears to be a header
+                that matches it.
+
         Example:
+            Reading a file that has a header row:
+
             ```python
             for m in AlignmentMetric.read(Path("out.tsv")):
+                print(m.read_name, m.mapping_quality)
+            ```
+
+            Reading a headerless file by supplying column names:
+
+            ```python
+            for m in AlignmentMetric.read(
+                Path("out.tsv"),
+                fieldnames=["read_name", "mapping_quality"],
+            ):
                 print(m.read_name, m.mapping_quality)
             ```
         """
         # NOTE: the utf-8-sig encoding is required to auto-remove BOM from input file headers
         with path.open(encoding="utf-8-sig") as fin:
-            for record in DictReader(fin, delimiter=delimiter):
+            records: Iterator[dict[str, str | None]] = DictReader(
+                fin, fieldnames=fieldnames, delimiter=delimiter
+            )
+            if fieldnames is not None:
+                # NB: only a full match flags a header. A partial match is ambiguous —
+                # a single field value happening to equal its name is plausible data.
+                first = next(records, None)
+                if first is not None:
+                    if all(first[f] == f for f in fieldnames):
+                        raise ValueError(
+                            f"First row of {path} appears to be a header that matches "
+                            "`fieldnames`. Omit `fieldnames` to read with the existing header."
+                        )
+                    records = chain([first], records)
+            for record in records:
                 yield cls.model_validate(record)
 
     # NB: "Before" validators (mode="before") run before field validators such as
@@ -110,9 +160,8 @@ class Metric(
         the model's field names when aliases are used.
 
         Note:
-            This method is deliberately not used during reading/validation. Note that the `read()`
-            method omits the `fieldnames` parameter from `csv.DictReader` so that any missing or
-            misspecified fields are handled by pydantic's model validation.
+            This method is deliberately not used during reading/validation; see `read()` for
+            the headerless-input path.
 
         Returns:
             The list of fieldnames to use as the header row.

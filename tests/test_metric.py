@@ -298,6 +298,120 @@ def test_read_extra_columns_ignored(tmp_path: Path) -> None:
 
 
 # ======================================================================================
+# Headerless file tests (explicit fieldnames)
+# ======================================================================================
+
+
+def test_read_headerless_with_fieldnames(tmp_path: Path) -> None:
+    """Reading a headerless TSV with `fieldnames` treats every row as data."""
+    fpath = tmp_path / "metrics.tsv"
+    # Three data rows, no header
+    fpath.write_text("foo\t1\nbar\t2\nbaz\t3\n")
+
+    metrics = list(SimpleMetric.read(fpath, fieldnames=["name", "count"]))
+
+    assert [m.name for m in metrics] == ["foo", "bar", "baz"]
+    assert [m.count for m in metrics] == [1, 2, 3]
+
+
+def test_read_headerless_with_alias(tmp_path: Path) -> None:
+    """`fieldnames` may reference a field's alias, mirroring header-based reading."""
+    fpath = tmp_path / "metrics.tsv"
+    fpath.write_text("foo\t100\n")
+
+    metrics = list(MetricWithAlias.read(fpath, fieldnames=["name", "count"]))
+
+    assert metrics[0].name == "foo"
+    assert metrics[0].read_count == 100
+
+
+def test_read_headerless_missing_required_field_raises(tmp_path: Path) -> None:
+    """A headerless file missing a required field still raises ValidationError."""
+    fpath = tmp_path / "metrics.tsv"
+    fpath.write_text("foo\n")
+
+    with pytest.raises(ValidationError):
+        list(SimpleMetric.read(fpath, fieldnames=["name"]))
+
+
+def test_read_headerless_row_missing_column_raises(tmp_path: Path) -> None:
+    """When a row has fewer values than `fieldnames`, missing required fields raises."""
+    fpath = tmp_path / "metrics.tsv"
+    # Row only has "name", "count" is missing
+    fpath.write_text("foo\n")
+
+    with pytest.raises(ValidationError):
+        list(SimpleMetric.read(fpath, fieldnames=["name", "count"]))
+
+
+def test_read_headerless_short_row_among_valid_rows_raises(tmp_path: Path) -> None:
+    """A single short row among otherwise-valid rows still raises ValidationError."""
+    fpath = tmp_path / "metrics.tsv"
+    # The middle row is missing the "count" value
+    fpath.write_text("foo\t1\nbar\nbaz\t3\n")
+
+    with pytest.raises(ValidationError):
+        list(SimpleMetric.read(fpath, fieldnames=["name", "count"]))
+
+
+def test_read_headerless_row_extra_column_ignored(tmp_path: Path) -> None:
+    """When a row has more values than `fieldnames`, the extras are ignored."""
+    fpath = tmp_path / "metrics.tsv"
+    # Row has an extra value not covered by fieldnames
+    fpath.write_text("foo\t1\textra\n")
+
+    metrics = list(SimpleMetric.read(fpath, fieldnames=["name", "count"]))
+
+    assert len(metrics) == 1
+    assert metrics[0].name == "foo"
+    assert metrics[0].count == 1
+
+
+def test_read_headerless_detects_header_row_raises(tmp_path: Path) -> None:
+    """Passing `fieldnames` for a file that already has a matching header row raises."""
+    fpath = tmp_path / "metrics.tsv"
+    # File has a real header row that matches the supplied fieldnames
+    fpath.write_text("name\tcount\nfoo\t1\n")
+
+    with pytest.raises(ValueError, match="header"):
+        list(SimpleMetric.read(fpath, fieldnames=["name", "count"]))
+
+
+def test_read_headerless_first_row_coincidentally_matching_value_is_data(
+    tmp_path: Path,
+) -> None:
+    """A single field whose value happens to match its fieldname is not flagged."""
+    fpath = tmp_path / "metrics.tsv"
+    fpath.write_text("name\t1\nbar\t2\n")
+
+    metrics = list(SimpleMetric.read(fpath, fieldnames=["name", "count"]))
+
+    assert [m.name for m in metrics] == ["name", "bar"]
+    assert [m.count for m in metrics] == [1, 2]
+
+
+def test_read_headerless_detects_header_row_with_aliased_field_raises(tmp_path: Path) -> None:
+    """Header detection compares against supplied fieldnames, not model field names."""
+    fpath = tmp_path / "metrics.tsv"
+    # `MetricWithAlias` declares `read_count` aliased to "count"; the supplied fieldnames
+    # use the alias, and the file's header row matches those fieldnames.
+    fpath.write_text("name\tcount\nfoo\t1\n")
+
+    with pytest.raises(ValueError, match="header"):
+        list(MetricWithAlias.read(fpath, fieldnames=["name", "count"]))
+
+
+def test_read_headerless_empty_file(tmp_path: Path) -> None:
+    """An empty headerless file yields no metrics and does not raise."""
+    fpath = tmp_path / "metrics.tsv"
+    fpath.write_text("")
+
+    metrics = list(SimpleMetric.read(fpath, fieldnames=["name", "count"]))
+
+    assert metrics == []
+
+
+# ======================================================================================
 # Parent/subclass tests
 # ======================================================================================
 
