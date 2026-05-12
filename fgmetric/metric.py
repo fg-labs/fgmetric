@@ -1,6 +1,7 @@
 from abc import ABC
 from collections.abc import Sequence
 from csv import DictReader
+from itertools import chain
 from pathlib import Path
 from typing import Any
 from typing import Iterator
@@ -66,6 +67,16 @@ class Metric(
         """
         Read Metric instances from file.
 
+        When `fieldnames` is supplied, the file is assumed to be headerless and every row is
+        read as data. As a safeguard, if the first row exactly matches `fieldnames` it is
+        treated as a forgotten header and `ValueError` is raised — passing `fieldnames` is not
+        a way to override an existing header. To read a file that has a header, either strip
+        the header from the file, or omit `fieldnames` to let `csv.DictReader` consume it.
+
+        Raises:
+            ValueError: If `fieldnames` is supplied and the first row appears to be a header
+                that matches it.
+
         Example:
             Reading a file that has a header row:
 
@@ -86,7 +97,23 @@ class Metric(
         """
         # NOTE: the utf-8-sig encoding is required to auto-remove BOM from input file headers
         with path.open(encoding="utf-8-sig") as fin:
-            for record in DictReader(fin, fieldnames=fieldnames, delimiter=delimiter):
+            records: Iterator[dict[str, str | None]] = DictReader(
+                fin, fieldnames=fieldnames, delimiter=delimiter
+            )
+            if fieldnames is not None:
+                # NB: only a full match flags a header. A partial match is ambiguous —
+                # a single field value happening to equal its name is plausible data.
+                first = next(records, None)
+                if first is not None:
+                    # NB: short rows produce None for missing fields; .get() avoids KeyError.
+                    if all(first.get(f) == f for f in fieldnames):
+                        raise ValueError(
+                            "First row appears to be a header that matches `fieldnames`. "
+                            "Either drop `fieldnames` to read with the existing header, "
+                            "or strip the header from the file before reading."
+                        )
+                    records = chain([first], records)
+            for record in records:
                 yield cls.model_validate(record)
 
     # NB: "Before" validators (mode="before") run before field validators such as
