@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-05-12
+
+### 🚀 Features
+
+- Expose `fieldnames` arg in `Metric.read` (#38)
+
+### 🐛 Bug Fixes
+
+- Update repository URLs to fg-labs after org transfer (#32)
+
+### 📚 Documentation
+
+- Add Fulcrum Genomics branding to README (#33)
+
 ## [0.2.0] - 2026-03-13
 
 ### 🐛 Bug Fixes
