@@ -128,9 +128,11 @@ class Metric(
         the model's field names when aliases are used.
 
         Note:
-            This method is deliberately not used during reading/validation. Note that the `read()`
-            method omits the `fieldnames` parameter from `csv.DictReader` so that any missing or
-            misspecified fields are handled by pydantic's model validation.
+            This method is deliberately not used during reading/validation.
+            By default, read() omits the fieldnames parameter from csv.DictReader so
+            missing/misspecified fields surface as Pydantic validation errors.
+            Callers may pass fieldnames explicitly when reading headerless files,
+            in which case responsibility for schema alignment shifts to the caller.
 
         Returns:
             The list of fieldnames to use as the header row.
