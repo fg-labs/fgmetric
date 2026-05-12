@@ -67,11 +67,18 @@ class Metric(
         """
         Read Metric instances from file.
 
+        By default, when `fieldnames` is omitted, the first row of the input file is read as
+        the header.
+
         When `fieldnames` is supplied, the file is assumed to be headerless and every row is
-        read as data. As a safeguard, if the first row exactly matches `fieldnames` it is
-        treated as a forgotten header and `ValueError` is raised — passing `fieldnames` is not
-        a way to override an existing header. To read a file that has a header, either strip
-        the header from the file, or omit `fieldnames` to let `csv.DictReader` consume it.
+        read as data. Rows shorter than `fieldnames` produce `None` for the missing fields,
+        which then go through normal model validation (raising `ValidationError` for required
+        fields).
+
+        As a safeguard, if the first row exactly matches `fieldnames` it is treated as a
+        forgotten header and `ValueError` is raised. Passing `fieldnames` is not a way to
+        override an existing header - to map differently-named header columns to model fields,
+        declare Pydantic field aliases on the `Metric` subclass.
 
         Raises:
             ValueError: If `fieldnames` is supplied and the first row appears to be a header
@@ -105,12 +112,10 @@ class Metric(
                 # a single field value happening to equal its name is plausible data.
                 first = next(records, None)
                 if first is not None:
-                    # NB: short rows produce None for missing fields; .get() avoids KeyError.
-                    if all(first.get(f) == f for f in fieldnames):
+                    if all(first[f] == f for f in fieldnames):
                         raise ValueError(
-                            "First row appears to be a header that matches `fieldnames`. "
-                            "Either drop `fieldnames` to read with the existing header, "
-                            "or strip the header from the file before reading."
+                            f"First row of {path} appears to be a header that matches "
+                            "`fieldnames`. Omit `fieldnames` to read with the existing header."
                         )
                     records = chain([first], records)
             for record in records:
@@ -155,11 +160,8 @@ class Metric(
         the model's field names when aliases are used.
 
         Note:
-            This method is deliberately not used during reading/validation.
-            By default, read() omits the fieldnames parameter from csv.DictReader so
-            missing/misspecified fields surface as Pydantic validation errors.
-            Callers may pass fieldnames explicitly when reading headerless files,
-            in which case responsibility for schema alignment shifts to the caller.
+            This method is deliberately not used during reading/validation; see `read()` for
+            the headerless-input path.
 
         Returns:
             The list of fieldnames to use as the header row.
