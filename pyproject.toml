@@ -13,6 +13,7 @@ include         = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies    = [
     "pydantic>=2.11.4",
+    "xopen>=2.0.0",
 ]
 classifiers     = [
     "Development Status :: 3 - Alpha",

@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Self
 from typing import TextIO
 
+from xopen import xopen
+
 from fgmetric.metric import Metric
 
 
@@ -59,9 +61,10 @@ class MetricWriter[T: Metric]:
         """
         Open `path` for writing and yield a `MetricWriter` over it.
 
-        The file is opened with the given encoding (default `utf-8`). The header
-        is written on context entry; the file is closed on context exit.
-        Compression is not yet supported.
+        Compression is selected automatically based on the output file extension: plaintext, gzip
+        (`.gz`), bzip2 (`.bz2`), or xz (`.xz`).
+
+        The header is written on context entry; the file is closed on context exit.
 
         Args:
             metric_class: Metric class.
@@ -73,7 +76,7 @@ class MetricWriter[T: Metric]:
         Yields:
             A `MetricWriter` over the opened file.
         """
-        with Path(path).open("w", encoding=encoding) as handle:
+        with xopen(path, mode="wt", encoding=encoding) as handle:
             yield cls(metric_class, handle, delimiter, lineterminator)
 
     def write(self, metric: T) -> None:
