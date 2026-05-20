@@ -39,7 +39,7 @@ def test_comma_delimited_list(tmp_path: Path) -> None:
     # Test writing
     fpath_to_write = tmp_path / "written.txt"
     writer: MetricWriter[FakeMetric]
-    with MetricWriter(FakeMetric, fpath_to_write) as writer:
+    with MetricWriter.open(FakeMetric, fpath_to_write) as writer:
         writer.writeall(metrics)
 
     with fpath_to_write.open("r") as f:
@@ -74,7 +74,7 @@ def test_other_delimited_list(tmp_path: Path) -> None:
     # Test writing
     fpath_to_write = tmp_path / "written.txt"
     writer: MetricWriter[FakeMetric]
-    with MetricWriter(FakeMetric, fpath_to_write) as writer:
+    with MetricWriter.open(FakeMetric, fpath_to_write) as writer:
         writer.write(metrics[0])
 
     with fpath_to_write.open("r") as f:
@@ -94,7 +94,7 @@ def test_delimited_list_with_complex_types(tmp_path: Path) -> None:
     # Test writing
     fpath_to_write = tmp_path / "written.txt"
     writer: MetricWriter[FakeMetric]
-    with MetricWriter(FakeMetric, fpath_to_write) as writer:
+    with MetricWriter.open(FakeMetric, fpath_to_write) as writer:
         writer.write(FakeMetric(name="Clint", values=[0.1, 0.002, 0.00301]))
 
     with fpath_to_write.open("r") as f:
@@ -132,7 +132,7 @@ def test_delimited_list_with_optional_field(tmp_path: Path) -> None:
     # Test writing
     fpath_to_write = tmp_path / "written.txt"
     writer: MetricWriter[FakeMetric]
-    with MetricWriter(FakeMetric, fpath_to_write) as writer:
+    with MetricWriter.open(FakeMetric, fpath_to_write) as writer:
         writer.writeall(metrics)
 
     with fpath_to_write.open("r") as f:
@@ -194,7 +194,7 @@ def test_counter_pivot_table_of_enum(tmp_path: Path) -> None:
     fpath_to_write = tmp_path / "written.txt"
 
     writer: MetricWriter[FakeMetric]
-    with MetricWriter(FakeMetric, fpath_to_write) as writer:
+    with MetricWriter.open(FakeMetric, fpath_to_write) as writer:
         writer.write(FakeMetric(name="Tim", counts=Counter({FakeEnum.FOO: 3, FakeEnum.BAR: 4})))
 
     with fpath_to_write.open("r") as f:
