@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Self
 
+from xopen import xopen
+
 if TYPE_CHECKING:
     from fgmetric.metric import Metric
 
@@ -79,7 +81,9 @@ class MetricReader[T: Metric]:
 
         The file is opened with the given encoding and closed on context exit. The default encoding,
         `utf-8-sig`, will cleanly open Excel-generated CSVs by removing any UTF-8 BOM (if present).
-        Compression is not yet supported.
+
+        Compression is detected automatically from the file extension: `.gz`, `.bz2`, and `.xz`
+        files are transparently decompressed.
 
         Args:
             metric_class: Metric class.
@@ -93,7 +97,7 @@ class MetricReader[T: Metric]:
         Yields:
             A `MetricReader` over the opened file.
         """
-        with Path(path).open(encoding=encoding) as handle:
+        with xopen(path, mode="rt", encoding=encoding) as handle:
             yield cls(metric_class, handle, delimiter, fieldnames)
 
     def __iter__(self) -> Self:
