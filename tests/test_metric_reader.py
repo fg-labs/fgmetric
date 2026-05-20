@@ -77,3 +77,12 @@ def test_open_requires_context_manager_usage(tmp_path: Path) -> None:
     cm = MetricReader.open(ExampleMetric, p)
     with pytest.raises(TypeError):
         list(cm)  # type: ignore[call-overload]
+
+
+def test_open_respects_encoding(tmp_path: Path) -> None:
+    """Test that MetricReader.open decodes the file with the specified encoding."""
+    p = tmp_path / "metrics.tsv"
+    p.write_bytes("name\tvalue\nrené\t1\n".encode("latin-1"))
+    with MetricReader.open(ExampleMetric, p, encoding="latin-1") as reader:
+        metrics = list(reader)
+    assert metrics == [ExampleMetric(name="rené", value=1)]

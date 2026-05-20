@@ -98,3 +98,11 @@ def test_writer_open_does_not_touch_file_until_enter(tmp_path: Path) -> None:
     MetricWriter.open(FakeMetric, p)
     # Construction alone must not truncate or rewrite the file.
     assert p.read_text() == "existing content\n"
+
+
+def test_writer_open_respects_encoding(tmp_path: Path) -> None:
+    """Test that MetricWriter.open writes with the specified encoding."""
+    p = tmp_path / "out.tsv"
+    with MetricWriter.open(FakeMetric, p, encoding="latin-1") as writer:
+        writer.write(FakeMetric(foo="rené", bar=1))
+    assert p.read_bytes() == "foo\tbar\nrené\t1\n".encode("latin-1")

@@ -436,3 +436,11 @@ def test_read_parent_class_discards_subclass_fields(tmp_path: Path) -> None:
     assert metrics[0].value == 42
     assert not hasattr(metrics[0], "extra_field")
     assert not hasattr(metrics[0], "another_field")
+
+
+def test_read_respects_encoding(tmp_path: Path) -> None:
+    """Test that Metric.read forwards the encoding kwarg to MetricReader.open."""
+    fpath = tmp_path / "metrics.tsv"
+    fpath.write_bytes("name\tcount\nrené\t1\n".encode("latin-1"))
+    metrics = list(SimpleMetric.read(fpath, encoding="latin-1"))
+    assert metrics == [SimpleMetric(name="rené", count=1)]
