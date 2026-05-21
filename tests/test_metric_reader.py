@@ -341,9 +341,9 @@ def test_read_returns_iterator(tmp_path: Path) -> None:
     assert hasattr(result, "__next__")
 
 
-def test_read_file_not_found_raises() -> None:
+def test_read_file_not_found_raises(tmp_path: Path) -> None:
     """Test that reading a non-existent file raises FileNotFoundError."""
-    fpath = Path("/nonexistent/path/metrics.tsv")
+    fpath = tmp_path / "does_not_exist.tsv"
 
     with pytest.raises(FileNotFoundError):
         list(SimpleMetric.read(fpath))
