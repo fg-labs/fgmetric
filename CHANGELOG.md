@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### 💥 Breaking Changes
+
+- Remove `Metric.read()` — read metrics via `MetricReader.open()` instead (#49)
+- `MetricWriter` is IO-first; open a path with `MetricWriter.open()` rather than passing it to the constructor (#42)
+
+### 🚀 Features
+
+- Introduce `MetricReader` for iterating metrics from any text-IO source (#41)
+- Add an `encoding` kwarg on `MetricReader.open` and `MetricWriter.open` (#43)
+- Transparent gzip/bz2/xz support via `xopen` (#44)
+
 ## [0.3.0] - 2026-05-12
 
 ### 🚀 Features

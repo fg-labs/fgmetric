@@ -62,10 +62,11 @@ with open("metrics.tsv") as f:
 `fgmetric` replaces this with:
 
 ```py
-for metric in AlignmentMetric.read(path):
-    # metric.mapping_quality is already an int
-    # metric.is_duplicate is already a bool
-    # metric.score is already Optional[float]
+with MetricReader.open(AlignmentMetric, path) as reader:
+    for metric in reader:
+        # metric.mapping_quality is already an int
+        # metric.is_duplicate is already a bool
+        # metric.score is already Optional[float]
 ```
 
 **How it compares:**
@@ -79,7 +80,7 @@ Define a class to represent each row:
 
 ```python
 from pathlib import Path
-from fgmetric import Metric, MetricWriter
+from fgmetric import Metric, MetricReader, MetricWriter
 
 
 class AlignmentMetric(Metric):
@@ -92,15 +93,16 @@ Then read or write:
 
 ```python
 # Reading
-for metric in AlignmentMetric.read(Path("alignments.tsv")):
-    print(f"{metric.read_name}: MQ={metric.mapping_quality}")
+with MetricReader.open(AlignmentMetric, Path("alignments.tsv")) as reader:
+    for metric in reader:
+        print(f"{metric.read_name}: MQ={metric.mapping_quality}")
 
 # Writing
 metrics = [
     AlignmentMetric(read_name="read1", mapping_quality=60),
     AlignmentMetric(read_name="read2", mapping_quality=30, is_duplicate=True),
 ]
-with MetricWriter(AlignmentMetric, Path("output.tsv")) as writer:
+with MetricWriter.open(AlignmentMetric, Path("output.tsv")) as writer:
     writer.writeall(metrics)
 ```
 
@@ -122,13 +124,31 @@ Both reading and writing support custom delimiters for working with CSV or other
 
 ```python
 # Reading CSV files
-for metric in MyMetric.read(Path("data.csv"), delimiter=","):
-    ...
+with MetricReader.open(MyMetric, Path("data.csv"), delimiter=",") as reader:
+    for metric in reader:
+        ...
 
 # Writing CSV files
-with MetricWriter(MyMetric, Path("output.csv"), delimiter=",") as writer:
+with MetricWriter.open(MyMetric, Path("output.csv"), delimiter=",") as writer:
     ...
 ```
+
+### Compression
+
+Reading and writing transparently handle gzip, bzip2, and xz files based on the path extension (via [xopen](https://github.com/pycompression/xopen)):
+
+```python
+with MetricReader.open(AlignmentMetric, Path("alignments.tsv.gz")) as reader:
+    for metric in reader:
+        ...
+
+with MetricWriter.open(AlignmentMetric, Path("output.tsv.bz2")) as writer:
+    writer.writeall(metrics)
+```
+
+### Text Encoding
+
+Both `MetricReader.open` and `MetricWriter.open` accept an `encoding` kwarg. Reading defaults to `utf-8-sig`, which cleanly opens Excel-generated CSVs by stripping a UTF-8 BOM if present.
 
 ### List Fields
 
