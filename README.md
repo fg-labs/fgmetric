@@ -70,7 +70,7 @@ with MetricReader.open(AlignmentMetric, path) as reader:
 ```
 
 **How it compares:**
-- **vs. csv + dataclasses** — Automatic type coercion and validation without boilerplate. Built on Pydantic, so additional custom validators and serializer can be readily added.
+- **vs. csv + dataclasses** — Automatic type coercion and validation without boilerplate. Built on Pydantic, so additional custom validators and serializers can be readily added.
 - **vs. pandas** — Unlike pandas, `fgmetric` processes records lazily — you can handle files larger than memory. And `Metric`s are type-validated and can be made immutable, making them safe to pass between functions without defensive copying.
 - **vs. Pydantic alone** — `fgmetric` handles CSV/TSV specifics (header parsing, delimiter configuration) and provides out-of-the box features like empty value handling and Counter field pivoting.
 
