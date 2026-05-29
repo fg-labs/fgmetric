@@ -72,12 +72,14 @@ class MetricReader[T: Metric]:
         path: Path | str,
         delimiter: str = "\t",
         fieldnames: Sequence[str] | None = None,
+        encoding: str = "utf-8-sig",
     ) -> Iterator[Self]:
         """
         Open `path` and yield a `MetricReader` over its contents.
 
-        The file is opened with `encoding="utf-8-sig"` (strips a UTF-8 BOM if
-        present) and closed on context exit. Compression is not yet supported.
+        The file is opened with the given encoding and closed on context exit. The default encoding,
+        `utf-8-sig`, will cleanly open Excel-generated CSVs by removing any UTF-8 BOM (if present).
+        Compression is not yet supported.
 
         Args:
             metric_class: Metric class.
@@ -86,11 +88,12 @@ class MetricReader[T: Metric]:
             fieldnames: Optional sequence of field names. If provided, the input is
                 treated as headerless and these names are used as the column
                 headers.
+            encoding: The text encoding used to decode the file.
 
         Yields:
             A `MetricReader` over the opened file.
         """
-        with Path(path).open(encoding="utf-8-sig") as handle:
+        with Path(path).open(encoding=encoding) as handle:
             yield cls(metric_class, handle, delimiter, fieldnames)
 
     def __iter__(self) -> Self:

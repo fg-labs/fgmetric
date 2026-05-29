@@ -62,6 +62,7 @@ class Metric(
         path: Path,
         delimiter: str = "\t",
         fieldnames: Sequence[str] | None = None,
+        encoding: str = "utf-8-sig",
     ) -> Iterator[Self]:
         """
         Read Metric instances from a file path.
@@ -87,6 +88,7 @@ class Metric(
             fieldnames: Optional sequence of field names. If provided, the input
                 is treated as headerless and these names are used as the column
                 headers.
+            encoding: The text encoding used to decode the file.
 
         Yields:
             Instances of the calling Metric subclass, one per data row.
@@ -113,7 +115,13 @@ class Metric(
                 print(m.read_name, m.mapping_quality)
             ```
         """
-        with MetricReader.open(cls, path, delimiter, fieldnames) as reader:
+        with MetricReader.open(
+            cls,
+            path,
+            delimiter=delimiter,
+            fieldnames=fieldnames,
+            encoding=encoding,
+        ) as reader:
             yield from reader
 
     # NB: "Before" validators (mode="before") run before field validators such as

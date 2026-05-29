@@ -54,24 +54,26 @@ class MetricWriter[T: Metric]:
         path: Path | str,
         delimiter: str = "\t",
         lineterminator: str = "\n",
+        encoding: str = "utf-8",
     ) -> Iterator[Self]:
         """
         Open `path` for writing and yield a `MetricWriter` over it.
 
-        The file is opened with `encoding="utf-8"`. The header is written on
-        context entry; the file is closed on context exit. Compression is not
-        yet supported.
+        The file is opened with the given encoding (default `utf-8`). The header
+        is written on context entry; the file is closed on context exit.
+        Compression is not yet supported.
 
         Args:
             metric_class: Metric class.
             path: Filesystem path to the output file.
             delimiter: The output file delimiter.
             lineterminator: The string used to terminate lines.
+            encoding: The text encoding used to write the file.
 
         Yields:
             A `MetricWriter` over the opened file.
         """
-        with Path(path).open("w", encoding="utf-8") as handle:
+        with Path(path).open("w", encoding=encoding) as handle:
             yield cls(metric_class, handle, delimiter, lineterminator)
 
     def write(self, metric: T) -> None:
