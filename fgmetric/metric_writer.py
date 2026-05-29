@@ -45,6 +45,48 @@ def _read_existing_header(
     return next(reader([first_line], delimiter=delimiter))
 
 
+def _append_writes_header(
+    metric_class: type[Metric],
+    path: Path | str,
+    delimiter: str,
+    encoding: str,
+) -> bool:
+    """
+    Validate the header of a file opened for appending and report whether to write one.
+
+    Returns `True` when `path` is missing or empty — append-or-create writes a fresh header.
+    When `path` already has content, its first row is validated against the metric class's
+    fields and a `ValueError` is raised on a mismatch; otherwise `False` is returned so the
+    existing header is left untouched.
+
+    Args:
+        metric_class: Metric class whose fields the existing header must match.
+        path: Filesystem path being opened for appending.
+        delimiter: The delimiter used to parse the existing header row.
+        encoding: The text encoding used to decode the file.
+
+    Returns:
+        Whether a header row must be written.
+
+    Raises:
+        ValueError: If `path` is non-empty and its header does not match the metric fields.
+    """
+    existing = _read_existing_header(path, delimiter, encoding)
+    if existing is None:
+        return True
+
+    expected = metric_class._header_fieldnames()
+    if existing != expected:
+        raise ValueError(
+            f"Existing header in {path} does not match "
+            f"{metric_class.__name__} fields.\n"
+            f"  expected: {expected}\n"
+            f"  found:    {existing}"
+        )
+
+    return False
+
+
 class MetricWriter[T: Metric]:
     """
     Write `Metric` instances to a text IO sink.
@@ -166,24 +208,14 @@ class MetricWriter[T: Metric]:
         if delimiter is None:
             delimiter = infer_delimiter(path)
 
+        xmode: Literal["wt", "at"]
         if mode == "a":
-            existing = _read_existing_header(path, delimiter, encoding)
-            if existing is None:
-                write_header = True
-            else:
-                expected = metric_class._header_fieldnames()
-                if existing != expected:
-                    raise ValueError(
-                        f"Existing header in {path} does not match "
-                        f"{metric_class.__name__} fields.\n"
-                        f"  expected: {expected}\n"
-                        f"  found:    {existing}"
-                    )
-                write_header = False
+            xmode = "at"
+            write_header = _append_writes_header(metric_class, path, delimiter, encoding)
         else:
+            xmode = "wt"
             write_header = True
 
-        xmode: Literal["wt", "at"] = "at" if mode == "a" else "wt"
         with xopen(path, mode=xmode, encoding=encoding) as handle:
             yield cls(metric_class, handle, delimiter, lineterminator, write_header=write_header)
 
