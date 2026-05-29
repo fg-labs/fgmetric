@@ -8,6 +8,7 @@ from typing import assert_type
 import pytest
 
 from fgmetric import Metric
+from fgmetric import MetricReader
 from fgmetric import MetricWriter
 
 
@@ -167,3 +168,18 @@ def test_writer_open_append_does_not_touch_file_until_enter(tmp_path: Path) -> N
     p.write_text("foo\tbar\n")
     MetricWriter.open(FakeMetric, p, mode="a")
     assert p.read_text() == "foo\tbar\n"
+
+
+@pytest.mark.parametrize("suffix", ["", ".gz", ".bz2", ".xz"])
+def test_writer_append_round_trips_across_formats(tmp_path: Path, suffix: str) -> None:
+    """Write then append then read back yields all rows, header-once, for every format."""
+    p = tmp_path / f"out.tsv{suffix}"
+    with MetricWriter.open(FakeMetric, p, mode="w") as writer:
+        writer.write(FakeMetric(foo="a", bar=1))
+    with MetricWriter.open(FakeMetric, p, mode="a") as writer:
+        writer.write(FakeMetric(foo="b", bar=2))
+
+    with MetricReader.open(FakeMetric, p) as reader_:
+        got = list(reader_)
+
+    assert got == [FakeMetric(foo="a", bar=1), FakeMetric(foo="b", bar=2)]
