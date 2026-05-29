@@ -77,7 +77,7 @@ class MetricReader[T: Metric]:
         """
         Open `path` and yield a `MetricReader` over its contents.
 
-        The file is opened with the given encoding and closed on context exit. The default encoding
+        The file is opened with the given encoding and closed on context exit. The default encoding,
         `utf-8-sig`, will cleanly open Excel-generated CSVs by removing any UTF-8 BOM (if present).
         Compression is not yet supported.
 
