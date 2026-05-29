@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import assert_type
 
 import pytest
 from pydantic import Field
@@ -98,6 +99,7 @@ def test_read_yields_correct_type(tmp_path: Path) -> None:
     fpath.write_text("name\tcount\nfoo\t1\n")
 
     for metric in SimpleMetric.read(fpath):
+        assert_type(metric, SimpleMetric)
         assert isinstance(metric, SimpleMetric)
 
 

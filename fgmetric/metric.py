@@ -1,7 +1,5 @@
 from abc import ABC
 from collections.abc import Sequence
-from csv import DictReader
-from itertools import chain
 from pathlib import Path
 from typing import Any
 from typing import Iterator
@@ -13,6 +11,7 @@ from pydantic import model_validator
 from fgmetric._typing_extensions import is_optional
 from fgmetric.collections import CounterPivotTable
 from fgmetric.collections import DelimitedList
+from fgmetric.metric_reader import MetricReader
 
 
 class Metric(
@@ -65,7 +64,9 @@ class Metric(
         fieldnames: Sequence[str] | None = None,
     ) -> Iterator[Self]:
         """
-        Read Metric instances from file.
+        Read Metric instances from a file path.
+
+        Thin wrapper around `MetricReader.open()`.
 
         By default, when `fieldnames` is omitted, the first row of the input file is read as
         the header.
@@ -79,6 +80,16 @@ class Metric(
         forgotten header and `ValueError` is raised. Passing `fieldnames` is not a way to
         override an existing header - to map differently-named header columns to model fields,
         declare Pydantic field aliases on the `Metric` subclass.
+
+        Args:
+            path: Filesystem path to the input file.
+            delimiter: The input file delimiter.
+            fieldnames: Optional sequence of field names. If provided, the input
+                is treated as headerless and these names are used as the column
+                headers.
+
+        Yields:
+            Instances of the calling Metric subclass, one per data row.
 
         Raises:
             ValueError: If `fieldnames` is supplied and the first row appears to be a header
@@ -102,24 +113,8 @@ class Metric(
                 print(m.read_name, m.mapping_quality)
             ```
         """
-        # NOTE: the utf-8-sig encoding is required to auto-remove BOM from input file headers
-        with path.open(encoding="utf-8-sig") as fin:
-            records: Iterator[dict[str, str | None]] = DictReader(
-                fin, fieldnames=fieldnames, delimiter=delimiter
-            )
-            if fieldnames is not None:
-                # NB: only a full match flags a header. A partial match is ambiguous —
-                # a single field value happening to equal its name is plausible data.
-                first = next(records, None)
-                if first is not None:
-                    if all(first[f] == f for f in fieldnames):
-                        raise ValueError(
-                            f"First row of {path} appears to be a header that matches "
-                            "`fieldnames`. Omit `fieldnames` to read with the existing header."
-                        )
-                    records = chain([first], records)
-            for record in records:
-                yield cls.model_validate(record)
+        with MetricReader.open(cls, path, delimiter, fieldnames) as reader:
+            yield from reader
 
     # NB: "Before" validators (mode="before") run before field validators such as
     # `DelimitedList._split_lists()`. Empty strings in Optional fields will always be converted to
