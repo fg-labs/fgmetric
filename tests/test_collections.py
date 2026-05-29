@@ -8,6 +8,7 @@ import pytest
 from pydantic import PlainSerializer
 
 from fgmetric import Metric
+from fgmetric import MetricReader
 from fgmetric import MetricWriter
 
 
@@ -28,7 +29,8 @@ def test_comma_delimited_list(tmp_path: Path) -> None:
         fout.write("Nils\t1,2,3\n")
         fout.write("Tim\t\n")
 
-    metrics = list(FakeMetric.read(fpath_to_read))
+    with MetricReader.open(FakeMetric, fpath_to_read) as reader:
+        metrics = list(reader)
 
     assert len(metrics) == 2
     assert metrics[0].name == "Nils"
@@ -65,7 +67,8 @@ def test_other_delimited_list(tmp_path: Path) -> None:
         fout.write("name\tvalues\n")
         fout.write("Tim\t1;2;3\n")
 
-    metrics = list(FakeMetric.read(fpath_to_read))
+    with MetricReader.open(FakeMetric, fpath_to_read) as reader:
+        metrics = list(reader)
 
     assert len(metrics) == 1
     assert metrics[0].name == "Tim"
@@ -121,7 +124,8 @@ def test_delimited_list_with_optional_field(tmp_path: Path) -> None:
         fout.write("Nils\t\n")
         fout.write("Tim\t1,2,3\n")
 
-    metrics = list(FakeMetric.read(fpath_to_read))
+    with MetricReader.open(FakeMetric, fpath_to_read) as reader:
+        metrics = list(reader)
 
     assert len(metrics) == 2
     assert metrics[0].name == "Nils"
@@ -183,7 +187,8 @@ def test_counter_pivot_table_of_enum(tmp_path: Path) -> None:
         fout.write("name\tfoo\tbar\n")
         fout.write("Nils\t1\t2\n")
 
-    metrics = list(FakeMetric.read(fpath_to_read))
+    with MetricReader.open(FakeMetric, fpath_to_read) as reader:
+        metrics = list(reader)
 
     assert len(metrics) == 1
     metric = metrics[0]
@@ -241,7 +246,8 @@ def test_counter_pivot_table_missing_enum_members_default_to_zero(tmp_path: Path
         fout.write("name\tfoo\n")
         fout.write("test\t5\n")
 
-    metrics = list(FakeMetric.read(fpath))
+    with MetricReader.open(FakeMetric, fpath) as reader:
+        metrics = list(reader)
 
     assert len(metrics) == 1
     metric = metrics[0]
