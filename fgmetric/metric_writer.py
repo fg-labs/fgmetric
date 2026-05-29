@@ -17,7 +17,8 @@ class MetricWriter[T: Metric]:
 
     Construction takes a writable text IO and writes the header row immediately.
     The writer does not own the sink; callers manage its lifecycle. Use the
-    `open` classmethod to open and write to a file in one step.
+    `open` classmethod to open and write to a file in one step; unlike direct
+    construction, `open` owns the file it opens and closes it on context exit.
     """
 
     _metric_class: type[T]
@@ -61,6 +62,10 @@ class MetricWriter[T: Metric]:
         """
         Open `path` for writing and yield a `MetricWriter` over it.
 
+        This is a context manager: bind it in a `with` statement and write through the writer
+        it yields. `writer = MetricWriter.open(...)` without `with` binds the context manager
+        itself, not a writer.
+
         Compression is selected automatically based on the output file extension: plaintext, gzip
         (`.gz`), bzip2 (`.bz2`), or xz (`.xz`).
 
@@ -75,6 +80,12 @@ class MetricWriter[T: Metric]:
 
         Yields:
             A `MetricWriter` over the opened file.
+
+        Example:
+            ```python
+            with MetricWriter.open(AlignmentMetric, "metrics.txt") as writer:
+                writer.writeall(metrics)
+            ```
         """
         with xopen(path, mode="wt", encoding=encoding) as handle:
             yield cls(metric_class, handle, delimiter, lineterminator)
