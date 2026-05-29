@@ -30,15 +30,21 @@ class MetricWriter[T: Metric]:
         sink: TextIO,
         delimiter: str = "\t",
         lineterminator: str = "\n",
+        write_header: bool = True,
     ) -> None:
         """
-        Initialize a new `MetricWriter` and write the header row to `sink`.
+        Initialize a new `MetricWriter`.
+
+        By default the header row is written to `sink` immediately on construction. Pass
+        `write_header=False` to suppress it — e.g. when appending to a sink that already
+        contains a header.
 
         Args:
             metric_class: Metric class.
             sink: Writable text IO (e.g., file handle, StringIO) to write to.
             delimiter: The output file delimiter.
             lineterminator: The string used to terminate lines.
+            write_header: Whether to write the header row on construction.
         """
         self._metric_class = metric_class
         self._writer = DictWriter(
@@ -47,7 +53,8 @@ class MetricWriter[T: Metric]:
             delimiter=delimiter,
             lineterminator=lineterminator,
         )
-        self._writer.writeheader()
+        if write_header:
+            self._writer.writeheader()
 
     @classmethod
     @contextmanager

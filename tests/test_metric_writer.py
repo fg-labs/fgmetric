@@ -106,3 +106,11 @@ def test_writer_open_respects_encoding(tmp_path: Path) -> None:
     with MetricWriter.open(FakeMetric, p, encoding="latin-1") as writer:
         writer.write(FakeMetric(foo="rené", bar=1))
     assert p.read_bytes() == "foo\tbar\nrené\t1\n".encode("latin-1")
+
+
+def test_writer_constructor_can_skip_header() -> None:
+    """A writer constructed with write_header=False writes no header row."""
+    sink = StringIO()
+    writer = MetricWriter(FakeMetric, sink, write_header=False)
+    writer.write(FakeMetric(foo="abc", bar=1))
+    assert sink.getvalue() == "abc\t1\n"
