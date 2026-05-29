@@ -261,3 +261,11 @@ def test_writer_open_overwrites_existing_file_when_overwrite_true(tmp_path: Path
     with MetricWriter.open(FakeMetric, p, overwrite=True) as writer:
         writer.write(FakeMetric(foo="abc", bar=1))
     assert p.read_text() == "foo\tbar\nabc\t1\n"
+
+
+def test_writer_constructor_can_skip_header() -> None:
+    """A writer constructed with write_header=False writes no header row."""
+    sink = StringIO()
+    writer = MetricWriter(FakeMetric, sink, write_header=False)
+    writer.write(FakeMetric(foo="abc", bar=1))
+    assert sink.getvalue() == "abc\t1\n"
