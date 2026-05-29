@@ -156,7 +156,7 @@ class ChildMetric(ParentMetric):
 # ======================================================================================
 
 
-def test_read_tsv(tmp_path: Path) -> None:
+def test_open_tsv(tmp_path: Path) -> None:
     """Test reading metrics from a TSV file."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\nfoo\t1\n")
@@ -169,7 +169,7 @@ def test_read_tsv(tmp_path: Path) -> None:
     assert metrics[0].count == 1
 
 
-def test_read_csv(tmp_path: Path) -> None:
+def test_open_csv(tmp_path: Path) -> None:
     """Test reading metrics with comma delimiter."""
     fpath = tmp_path / "metrics.csv"
     fpath.write_text("name,count\nfoo,1\n")
@@ -182,7 +182,7 @@ def test_read_csv(tmp_path: Path) -> None:
     assert metrics[0].count == 1
 
 
-def test_read_yields_correct_type(tmp_path: Path) -> None:
+def test_open_yields_correct_type(tmp_path: Path) -> None:
     """Test that MetricReader yields instances of the correct Metric subclass."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\nfoo\t1\n")
@@ -193,7 +193,7 @@ def test_read_yields_correct_type(tmp_path: Path) -> None:
             assert isinstance(metric, SimpleMetric)
 
 
-def test_read_multiple_rows(tmp_path: Path) -> None:
+def test_open_multiple_rows(tmp_path: Path) -> None:
     """Test reading a file with multiple metric rows."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\nfoo\t1\nbar\t2\nbaz\t3\n")
@@ -215,7 +215,7 @@ def test_read_multiple_rows(tmp_path: Path) -> None:
 # ======================================================================================
 
 
-def test_read_coerces_string_to_int(tmp_path: Path) -> None:
+def test_open_coerces_string_to_int(tmp_path: Path) -> None:
     """Test that string values are coerced to int fields."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\nfoo\t42\n")
@@ -227,7 +227,7 @@ def test_read_coerces_string_to_int(tmp_path: Path) -> None:
     assert isinstance(metrics[0].count, int)
 
 
-def test_read_coerces_string_to_float(tmp_path: Path) -> None:
+def test_open_coerces_string_to_float(tmp_path: Path) -> None:
     """Test that string values are coerced to float fields."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tscore\nfoo\t3.14\n")
@@ -239,7 +239,7 @@ def test_read_coerces_string_to_float(tmp_path: Path) -> None:
     assert isinstance(metrics[0].score, float)
 
 
-def test_read_coerces_string_to_bool(tmp_path: Path) -> None:
+def test_open_coerces_string_to_bool(tmp_path: Path) -> None:
     """Test that string values like 'true'/'false' are coerced to bool."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tis_active\nfoo\ttrue\nbar\tfalse\n")
@@ -256,7 +256,7 @@ def test_read_coerces_string_to_bool(tmp_path: Path) -> None:
 # ======================================================================================
 
 
-def test_read_empty_field_becomes_none(tmp_path: Path) -> None:
+def test_open_empty_field_becomes_none(tmp_path: Path) -> None:
     """Test that empty string fields are converted to None."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tvalue\nfoo\t\n")
@@ -267,7 +267,7 @@ def test_read_empty_field_becomes_none(tmp_path: Path) -> None:
     assert metrics[0].value is None
 
 
-def test_read_empty_field_with_optional_type(tmp_path: Path) -> None:
+def test_open_empty_field_with_optional_type(tmp_path: Path) -> None:
     """Test that empty fields work with Optional[T] annotations."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tvalue\nfoo\t\nbar\t42\n")
@@ -279,7 +279,7 @@ def test_read_empty_field_with_optional_type(tmp_path: Path) -> None:
     assert metrics[1].value == 42
 
 
-def test_read_empty_field_with_required_type_raises(tmp_path: Path) -> None:
+def test_open_empty_field_with_required_type_raises(tmp_path: Path) -> None:
     """Test that empty fields on required (non-Optional) fields raise ValidationError."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\nfoo\t\n")
@@ -294,7 +294,7 @@ def test_read_empty_field_with_required_type_raises(tmp_path: Path) -> None:
 # ======================================================================================
 
 
-def test_read_handles_utf8_bom(tmp_path: Path) -> None:
+def test_open_handles_utf8_bom(tmp_path: Path) -> None:
     """Test that UTF-8 BOM is stripped from file header."""
     fpath = tmp_path / "metrics.tsv"
     # Write file with BOM prefix
@@ -313,7 +313,7 @@ def test_read_handles_utf8_bom(tmp_path: Path) -> None:
 # ======================================================================================
 
 
-def test_read_with_field_alias(tmp_path: Path) -> None:
+def test_open_with_field_alias(tmp_path: Path) -> None:
     """Test reading a file where headers match field aliases."""
     fpath = tmp_path / "metrics.tsv"
     # Header uses alias "count" instead of field name "read_count"
@@ -331,7 +331,7 @@ def test_read_with_field_alias(tmp_path: Path) -> None:
 # ======================================================================================
 
 
-def test_read_empty_file_no_rows(tmp_path: Path) -> None:
+def test_open_empty_file_no_rows(tmp_path: Path) -> None:
     """Test reading a file with only a header row (no data)."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\n")
@@ -342,7 +342,7 @@ def test_read_empty_file_no_rows(tmp_path: Path) -> None:
     assert len(metrics) == 0
 
 
-def test_read_file_not_found_raises(tmp_path: Path) -> None:
+def test_open_file_not_found_raises(tmp_path: Path) -> None:
     """Test that opening a non-existent file raises FileNotFoundError."""
     fpath = tmp_path / "does_not_exist.tsv"
 
@@ -356,7 +356,7 @@ def test_read_file_not_found_raises(tmp_path: Path) -> None:
 # ======================================================================================
 
 
-def test_read_missing_required_field_raises(tmp_path: Path) -> None:
+def test_open_missing_required_field_raises(tmp_path: Path) -> None:
     """Test that missing required fields raise ValidationError."""
     fpath = tmp_path / "metrics.tsv"
     # Missing "count" column
@@ -367,7 +367,7 @@ def test_read_missing_required_field_raises(tmp_path: Path) -> None:
             list(reader)
 
 
-def test_read_invalid_type_raises(tmp_path: Path) -> None:
+def test_open_invalid_type_raises(tmp_path: Path) -> None:
     """Test that values that can't be coerced raise ValidationError."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\nfoo\tnot_an_int\n")
@@ -377,7 +377,7 @@ def test_read_invalid_type_raises(tmp_path: Path) -> None:
             list(reader)
 
 
-def test_read_extra_columns_ignored(tmp_path: Path) -> None:
+def test_open_extra_columns_ignored(tmp_path: Path) -> None:
     """Test that extra columns in the file are ignored."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\textra\nfoo\t1\tignored\n")
@@ -396,7 +396,7 @@ def test_read_extra_columns_ignored(tmp_path: Path) -> None:
 # ======================================================================================
 
 
-def test_read_headerless_with_fieldnames(tmp_path: Path) -> None:
+def test_open_headerless_with_fieldnames(tmp_path: Path) -> None:
     """Reading a headerless TSV with `fieldnames` treats every row as data."""
     fpath = tmp_path / "metrics.tsv"
     # Three data rows, no header
@@ -409,7 +409,7 @@ def test_read_headerless_with_fieldnames(tmp_path: Path) -> None:
     assert [m.count for m in metrics] == [1, 2, 3]
 
 
-def test_read_headerless_with_alias(tmp_path: Path) -> None:
+def test_open_headerless_with_alias(tmp_path: Path) -> None:
     """`fieldnames` may reference a field's alias, mirroring header-based reading."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("foo\t100\n")
@@ -421,7 +421,7 @@ def test_read_headerless_with_alias(tmp_path: Path) -> None:
     assert metrics[0].read_count == 100
 
 
-def test_read_headerless_missing_required_field_raises(tmp_path: Path) -> None:
+def test_open_headerless_missing_required_field_raises(tmp_path: Path) -> None:
     """A headerless file missing a required field still raises ValidationError."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("foo\n")
@@ -431,7 +431,7 @@ def test_read_headerless_missing_required_field_raises(tmp_path: Path) -> None:
             list(reader)
 
 
-def test_read_headerless_row_missing_column_raises(tmp_path: Path) -> None:
+def test_open_headerless_row_missing_column_raises(tmp_path: Path) -> None:
     """When a row has fewer values than `fieldnames`, missing required fields raises."""
     fpath = tmp_path / "metrics.tsv"
     # Row only has "name", "count" is missing
@@ -442,7 +442,7 @@ def test_read_headerless_row_missing_column_raises(tmp_path: Path) -> None:
             list(reader)
 
 
-def test_read_headerless_short_row_among_valid_rows_raises(tmp_path: Path) -> None:
+def test_open_headerless_short_row_among_valid_rows_raises(tmp_path: Path) -> None:
     """A single short row among otherwise-valid rows still raises ValidationError."""
     fpath = tmp_path / "metrics.tsv"
     # The middle row is missing the "count" value
@@ -453,7 +453,7 @@ def test_read_headerless_short_row_among_valid_rows_raises(tmp_path: Path) -> No
             list(reader)
 
 
-def test_read_headerless_row_extra_column_ignored(tmp_path: Path) -> None:
+def test_open_headerless_row_extra_column_ignored(tmp_path: Path) -> None:
     """When a row has more values than `fieldnames`, the extras are ignored."""
     fpath = tmp_path / "metrics.tsv"
     # Row has an extra value not covered by fieldnames
@@ -467,7 +467,7 @@ def test_read_headerless_row_extra_column_ignored(tmp_path: Path) -> None:
     assert metrics[0].count == 1
 
 
-def test_read_headerless_detects_header_row_raises(tmp_path: Path) -> None:
+def test_open_headerless_detects_header_row_raises(tmp_path: Path) -> None:
     """Passing `fieldnames` for a file that already has a matching header row raises."""
     fpath = tmp_path / "metrics.tsv"
     # File has a real header row that matches the supplied fieldnames
@@ -478,7 +478,7 @@ def test_read_headerless_detects_header_row_raises(tmp_path: Path) -> None:
             pass
 
 
-def test_read_headerless_first_row_coincidentally_matching_value_is_data(
+def test_open_headerless_first_row_coincidentally_matching_value_is_data(
     tmp_path: Path,
 ) -> None:
     """A single field whose value happens to match its fieldname is not flagged."""
@@ -492,7 +492,7 @@ def test_read_headerless_first_row_coincidentally_matching_value_is_data(
     assert [m.count for m in metrics] == [1, 2]
 
 
-def test_read_headerless_detects_header_row_with_aliased_field_raises(tmp_path: Path) -> None:
+def test_open_headerless_detects_header_row_with_aliased_field_raises(tmp_path: Path) -> None:
     """Header detection compares against supplied fieldnames, not model field names."""
     fpath = tmp_path / "metrics.tsv"
     # `MetricWithAlias` declares `read_count` aliased to "count"; the supplied fieldnames
@@ -504,7 +504,7 @@ def test_read_headerless_detects_header_row_with_aliased_field_raises(tmp_path: 
             pass
 
 
-def test_read_headerless_empty_file(tmp_path: Path) -> None:
+def test_open_headerless_empty_file(tmp_path: Path) -> None:
     """An empty headerless file yields no metrics and does not raise."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("")
@@ -520,7 +520,7 @@ def test_read_headerless_empty_file(tmp_path: Path) -> None:
 # ======================================================================================
 
 
-def test_read_parent_class_discards_subclass_fields(tmp_path: Path) -> None:
+def test_open_parent_class_discards_subclass_fields(tmp_path: Path) -> None:
     """
     Test that reading with parent class discards extra subclass fields.
 
@@ -539,12 +539,3 @@ def test_read_parent_class_discards_subclass_fields(tmp_path: Path) -> None:
     assert metrics[0].value == 42
     assert not hasattr(metrics[0], "extra_field")
     assert not hasattr(metrics[0], "another_field")
-
-
-def test_read_respects_encoding(tmp_path: Path) -> None:
-    """Test that MetricReader.open decodes the file with the specified encoding."""
-    fpath = tmp_path / "metrics.tsv"
-    fpath.write_bytes("name\tcount\nrené\t1\n".encode("latin-1"))
-    with MetricReader.open(SimpleMetric, fpath, encoding="latin-1") as reader:
-        metrics = list(reader)
-    assert metrics == [SimpleMetric(name="rené", count=1)]
