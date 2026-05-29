@@ -79,7 +79,6 @@ with MetricReader.open(AlignmentMetric, path) as reader:
 Define a class to represent each row:
 
 ```python
-from pathlib import Path
 from fgmetric import Metric, MetricReader, MetricWriter
 
 

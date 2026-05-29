@@ -12,8 +12,11 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Remove `Metric.read()` — read metrics via `MetricReader.open()` instead (#49)
 - `MetricWriter` is IO-first; open a path with `MetricWriter.open()` rather than passing it to the constructor (#42)
+
+### Removed
+
+- Remove `Metric.read()` — read metrics via `MetricReader.open()` instead (#49)
 
 ## [0.3.0] - 2026-05-12
 
