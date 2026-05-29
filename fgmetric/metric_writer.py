@@ -2,7 +2,9 @@ from collections.abc import Iterable
 from collections.abc import Iterator
 from contextlib import contextmanager
 from csv import DictWriter
+from csv import reader
 from pathlib import Path
+from typing import Literal
 from typing import Self
 from typing import TextIO
 
@@ -11,6 +13,36 @@ from xopen import xopen
 from fgmetric._delimiter import infer_delimiter
 from fgmetric._paths import path_write_error
 from fgmetric.metric import Metric
+
+
+def _read_existing_header(
+    path: Path | str,
+    delimiter: str,
+    encoding: str,
+) -> list[str] | None:
+    """
+    Return the parsed first row of an existing, non-empty file, or `None`.
+
+    Returns `None` when the file is missing or empty. Otherwise the first line is parsed with
+    `csv.reader` (so it is interpreted exactly as `DictWriter` would have written it) and the
+    resulting list of column names is returned.
+
+    Args:
+        path: Filesystem path to inspect.
+        delimiter: The delimiter used to parse the header row.
+        encoding: The text encoding used to decode the file.
+
+    Returns:
+        The parsed header row, or `None` if the file is missing or empty.
+    """
+    try:
+        with xopen(path, mode="rt", encoding=encoding) as handle:
+            first_line = handle.readline()
+    except FileNotFoundError:
+        return None
+    if first_line == "":
+        return None
+    return next(reader([first_line], delimiter=delimiter))
 
 
 class MetricWriter[T: Metric]:
@@ -64,6 +96,7 @@ class MetricWriter[T: Metric]:
         cls,
         metric_class: type[T],
         path: Path | str,
+        mode: Literal["w", "a"] = "w",
         delimiter: str | None = None,
         lineterminator: str = "\n",
         encoding: str = "utf-8",
@@ -79,11 +112,23 @@ class MetricWriter[T: Metric]:
         Compression is selected automatically based on the output file extension: plaintext, gzip
         (`.gz`), bzip2 (`.bz2`), or xz (`.xz`).
 
-        The header is written on context entry; the file is closed on context exit.
+        With `mode="w"` (the default) the file is truncated and the header row is written (refused
+        with `FileExistsError` if the file already exists and `overwrite` is `False`). With
+        `mode="a"` the file is opened for appending: if it is missing or empty the header is
+        written first (append-or-create); if it already has content, its first row is validated
+        against the metric class's fields (parsed with `delimiter`) and a `ValueError` is raised on
+        a mismatch — no header is written in that case. The existing header is read with the same
+        `encoding`, so a foreign file written with a different delimiter or a BOM will fail
+        validation. `MetricWriter` always terminates rows with `lineterminator`, so appending to a
+        foreign file whose last line lacks a trailing newline would concatenate.
+
+        The file is opened lazily on context entry and closed on context exit.
 
         Args:
             metric_class: Metric class.
             path: Filesystem path to the output file.
+            mode: `"w"` to truncate and write, `"a"` to append. Append is non-destructive, so the
+                `overwrite` guard does not apply.
             delimiter: The output file delimiter. When `None` (the default), the delimiter is
                 inferred from the file extension: `.csv` → comma; `.tsv`, `.txt`, `.tab`, or
                 any extension ending in `metrics` → tab — ignoring any trailing compression
@@ -102,22 +147,45 @@ class MetricWriter[T: Metric]:
             IsADirectoryError: If `path` is a directory.
             PermissionError: If `path` exists but is not writable, or if `path` cannot be
                 created in its parent directory.
-            FileExistsError: If `path` already exists and `overwrite` is `False`.
-            ValueError: If `delimiter` is omitted and the delimiter cannot be inferred from
-                the file extension.
+            FileExistsError: If `path` already exists, `mode="w"`, and `overwrite` is `False`.
+            ValueError: If `delimiter` is omitted and cannot be inferred from the file
+                extension, or if `mode="a"` and the existing file's header does not match the
+                metric class's fields.
 
         Example:
             ```python
             with MetricWriter.open(AlignmentMetric, "metrics.txt") as writer:
                 writer.writeall(metrics)
+
+            with MetricWriter.open(AlignmentMetric, "metrics.txt", mode="a") as writer:
+                writer.writeall(more_metrics)
             ```
         """
-        if (error := path_write_error(path, overwrite=overwrite)) is not None:
+        if (error := path_write_error(path, overwrite=overwrite or mode == "a")) is not None:
             raise error
         if delimiter is None:
             delimiter = infer_delimiter(path)
-        with xopen(path, mode="wt", encoding=encoding) as handle:
-            yield cls(metric_class, handle, delimiter, lineterminator)
+
+        if mode == "a":
+            existing = _read_existing_header(path, delimiter, encoding)
+            if existing is None:
+                write_header = True
+            else:
+                expected = metric_class._header_fieldnames()
+                if existing != expected:
+                    raise ValueError(
+                        f"Existing header in {path} does not match "
+                        f"{metric_class.__name__} fields.\n"
+                        f"  expected: {expected}\n"
+                        f"  found:    {existing}"
+                    )
+                write_header = False
+        else:
+            write_header = True
+
+        xmode: Literal["wt", "at"] = "at" if mode == "a" else "wt"
+        with xopen(path, mode=xmode, encoding=encoding) as handle:
+            yield cls(metric_class, handle, delimiter, lineterminator, write_header=write_header)
 
     def write(self, metric: T) -> None:
         """
