@@ -20,7 +20,8 @@ class MetricReader[T: Metric]:
 
     Constructed with any iterable of strings (file handle, StringIO, list of
     lines). The reader does not own the source; callers manage its lifecycle.
-    Use the `open` classmethod to open and read a file in one step.
+    Use the `open` classmethod to open and read a file in one step; unlike direct
+    construction, `open` owns the file it opens and closes it on context exit.
     """
 
     _metric_class: type[T]
@@ -79,6 +80,10 @@ class MetricReader[T: Metric]:
         """
         Open `path` and yield a `MetricReader` over its contents.
 
+        This is a context manager: bind it in a `with` statement and iterate the reader it
+        yields. `reader = MetricReader.open(...)` without `with` binds the context manager
+        itself, not a reader, so it will not iterate.
+
         The file is opened with the given encoding and closed on context exit. The default encoding,
         `utf-8-sig`, will cleanly open Excel-generated CSVs by removing any UTF-8 BOM (if present).
 
@@ -96,6 +101,13 @@ class MetricReader[T: Metric]:
 
         Yields:
             A `MetricReader` over the opened file.
+
+        Example:
+            ```python
+            with MetricReader.open(AlignmentMetric, "metrics.txt") as reader:
+                for metric in reader:
+                    ...
+            ```
         """
         with xopen(path, mode="rt", encoding=encoding) as handle:
             yield cls(metric_class, handle, delimiter, fieldnames)
