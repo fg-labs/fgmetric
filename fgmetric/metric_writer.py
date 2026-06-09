@@ -1,8 +1,9 @@
 from collections.abc import Iterable
 from collections.abc import Iterator
+from collections.abc import Sequence
 from contextlib import contextmanager
+from csv import DictReader
 from csv import DictWriter
-from csv import reader
 from pathlib import Path
 from typing import Literal
 from typing import Self
@@ -19,13 +20,13 @@ def _read_existing_header(
     path: Path | str,
     delimiter: str,
     encoding: str,
-) -> list[str] | None:
+) -> Sequence[str] | None:
     """
-    Return the parsed first row of an existing, non-empty file, or `None`.
+    Return the header row of an existing, non-empty file, or `None`.
 
-    Returns `None` when the file is missing or empty. Otherwise the first line is parsed with
-    `csv.reader` (so it is interpreted exactly as `DictWriter` would have written it) and the
-    resulting list of column names is returned.
+    Returns `None` when the file is missing or empty. Otherwise the first row is parsed with
+    `csv.DictReader` — the symmetric counterpart to the `DictWriter` used to write metrics — so it
+    is interpreted exactly as it was written, and its field names are returned.
 
     Args:
         path: Filesystem path to inspect.
@@ -37,12 +38,9 @@ def _read_existing_header(
     """
     try:
         with xopen(path, mode="rt", encoding=encoding) as handle:
-            first_line = handle.readline()
+            return DictReader(handle, delimiter=delimiter).fieldnames
     except FileNotFoundError:
         return None
-    if first_line == "":
-        return None
-    return next(reader([first_line], delimiter=delimiter))
 
 
 def _append_writes_header(
@@ -161,7 +159,8 @@ class MetricWriter[T: Metric]:
         against the metric class's fields (parsed with `delimiter`) and a `ValueError` is raised on
         a mismatch — no header is written in that case. The existing header is read with the same
         `encoding`, so a foreign file written with a different delimiter or a BOM will fail
-        validation. `MetricWriter` always terminates rows with `lineterminator`, so appending to a
+        validation (`MetricReader.open` defaults to `utf-8-sig`, which strips a BOM; the writer
+        does not). `MetricWriter` always terminates rows with `lineterminator`, so appending to a
         foreign file whose last line lacks a trailing newline would concatenate.
 
         The file is opened lazily on context entry and closed on context exit.
