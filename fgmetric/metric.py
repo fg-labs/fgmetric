@@ -111,15 +111,19 @@ class Metric(
         # TODO: support returning the set of fields that would be constructed if the class has a
         # custom model serializer
 
+        # Resolve each field to the key it serializes under (its alias, when one is set), so the
+        # header matches the keys produced by `model_dump(by_alias=True)`. The Counter field, if
+        # present, is dropped here and replaced by its pivoted enum-member columns below.
         fieldnames: list[str]
-        fieldnames = list(cls.model_fields.keys())
+        fieldnames = [
+            info.serialization_alias or info.alias or name
+            for name, info in cls.model_fields.items()
+            if name != cls._counter_fieldname
+        ]
 
         if cls._counter_fieldname is None:
             # Short circuit if we don't have a Counter field
             return fieldnames
-
-        # Remove the declared Counter field
-        fieldnames = [f for f in fieldnames if f != cls._counter_fieldname]
 
         # Add the enum members
         assert cls._counter_enum is not None  # type narrowing
