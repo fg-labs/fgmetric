@@ -1,0 +1,75 @@
+from collections import Counter
+from enum import StrEnum
+from enum import unique
+from pathlib import Path
+
+from fgmetric import Metric
+from fgmetric import MetricReader
+from fgmetric import MetricWriter
+
+
+class SimpleMetric(Metric):
+    """A Metric with str and int fields."""
+
+    name: str
+    value: int
+
+
+class OptionalScalarMetric(Metric):
+    """A Metric with a scalar Optional field."""
+
+    name: str
+    value: int | None = None
+
+
+def test_roundtrip_scalar_optional(tmp_path: Path) -> None:
+    """A scalar Optional field round-trips, with None surviving the write-then-read cycle."""
+    expected = [
+        OptionalScalarMetric(name="alice", value=42),
+        OptionalScalarMetric(name="bob", value=None),
+    ]
+
+    p = tmp_path / "metrics.tsv"
+    with MetricWriter.open(OptionalScalarMetric, p) as writer:
+        writer.writeall(expected)
+
+    with MetricReader.open(OptionalScalarMetric, p) as reader:
+        assert list(reader) == expected
+
+
+def test_roundtrip_counter(tmp_path: Path) -> None:
+    """A Counter[StrEnum] field round-trips through a full write-then-read cycle."""
+
+    @unique
+    class FakeEnum(StrEnum):
+        FOO = "foo"
+        BAR = "bar"
+
+    class CounterMetric(Metric):
+        name: str
+        counts: Counter[FakeEnum]
+
+    expected = [
+        CounterMetric(name="alice", counts=Counter({FakeEnum.FOO: 1, FakeEnum.BAR: 2})),
+        CounterMetric(name="bob", counts=Counter({FakeEnum.FOO: 3, FakeEnum.BAR: 4})),
+    ]
+
+    p = tmp_path / "metrics.tsv"
+    with MetricWriter.open(CounterMetric, p) as writer:
+        writer.writeall(expected)
+
+    with MetricReader.open(CounterMetric, p) as reader:
+        assert list(reader) == expected
+
+
+def test_roundtrip_empty_file(tmp_path: Path) -> None:
+    """Writing zero rows produces a header-only file that reads back to an empty list."""
+    p = tmp_path / "metrics.tsv"
+    with MetricWriter.open(SimpleMetric, p) as writer:
+        writer.writeall([])
+
+    # The writer emits the header on context entry, so the file is header-only.
+    assert p.read_text() == "name\tvalue\n"
+
+    with MetricReader.open(SimpleMetric, p) as reader:
+        assert list(reader) == []
