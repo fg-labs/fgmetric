@@ -338,3 +338,26 @@ def test_writer_append_round_trips_across_formats(tmp_path: Path, suffix: str) -
         got = list(reader_)
 
     assert got == [FakeMetric(foo="a", bar=1), FakeMetric(foo="b", bar=2)]
+
+
+@pytest.mark.parametrize("suffix", ["", ".gz", ".bz2", ".xz"])
+def test_writer_append_to_empty_file_writes_header_across_formats(
+    tmp_path: Path, suffix: str
+) -> None:
+    """Append-or-create to an existing empty file writes the header first, for every format."""
+    p = tmp_path / f"out.tsv{suffix}"
+    p.touch()  # 0-byte file
+    with MetricWriter.open(FakeMetric, p, mode="a") as writer:
+        writer.write(FakeMetric(foo="a", bar=1))
+
+    with MetricReader.open(FakeMetric, p) as reader_:
+        assert list(reader_) == [FakeMetric(foo="a", bar=1)]
+
+
+def test_writer_append_concatenates_when_last_line_lacks_newline(tmp_path: Path) -> None:
+    """Appending after a newline-less last line concatenates the new row, as documented."""
+    p = tmp_path / "out.tsv"
+    p.write_text("foo\tbar\na\t1")  # header + one row, no trailing newline
+    with MetricWriter.open(FakeMetric, p, mode="a") as writer:
+        writer.write(FakeMetric(foo="b", bar=2))
+    assert p.read_text() == "foo\tbar\na\t1b\t2\n"

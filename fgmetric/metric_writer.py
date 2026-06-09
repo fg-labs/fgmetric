@@ -37,10 +37,14 @@ def _read_existing_header(
         The parsed header row, or `None` if the file is missing or empty.
     """
     try:
-        with xopen(path, mode="rt", encoding=encoding) as handle:
-            return DictReader(handle, delimiter=delimiter).fieldnames
+        # A zero-byte file is not a valid compressed stream; checking the size first avoids the
+        # bz2/xz decompressors raising EOFError when xopen tries to read an empty `.bz2`/`.xz`.
+        if Path(path).stat().st_size == 0:
+            return None
     except FileNotFoundError:
         return None
+    with xopen(path, mode="rt", encoding=encoding) as handle:
+        return DictReader(handle, delimiter=delimiter).fieldnames
 
 
 def _append_writes_header(
