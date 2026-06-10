@@ -3,13 +3,16 @@ from enum import StrEnum
 from enum import unique
 from io import StringIO
 from pathlib import Path
+from typing import ClassVar
 from typing import assert_type
 
 import pytest
 from pydantic import Field
+from pytest_mock import MockerFixture
 
 from fgmetric import Metric
 from fgmetric import MetricWriter
+from fgmetric import metric_writer
 
 
 class FakeMetric(Metric):
@@ -98,6 +101,35 @@ def test_writer_uses_field_aliases() -> None:
     assert sink.getvalue() == "name\tcount\nfoo\t100\n"
 
 
+def test_writer_uses_custom_column_delimiter() -> None:
+    """
+    A custom column delimiter is applied to the header and rows.
+
+    The column delimiter is independent of `collection_delimiter`, which joins list elements
+    *within* a single cell.
+    """
+
+    class ListMetric(Metric):
+        collection_delimiter: ClassVar[str] = ";"
+        name: str
+        tags: list[int]
+
+    sink = StringIO()
+    writer = MetricWriter(ListMetric, sink, delimiter=",")
+    writer.write(ListMetric(name="x", tags=[1, 2, 3]))
+    # Columns are separated by the writer's "," delimiter; elements inside the `tags` cell are
+    # joined by the ";" collection_delimiter.
+    assert sink.getvalue() == "name,tags\nx,1;2;3\n"
+
+
+def test_writer_uses_custom_lineterminator() -> None:
+    """A custom line terminator ends both the header and the rows."""
+    sink = StringIO()
+    writer = MetricWriter(FakeMetric, sink, lineterminator="\r\n")
+    writer.write(FakeMetric(foo="abc", bar=1))
+    assert sink.getvalue() == "foo\tbar\r\nabc\t1\r\n"
+
+
 def test_writer_open_writes_header_and_rows(tmp_path: Path) -> None:
     """Test that MetricWriter.open opens a file, writes the header, and writes rows."""
     p = tmp_path / "out.tsv"
@@ -121,3 +153,24 @@ def test_writer_open_respects_encoding(tmp_path: Path) -> None:
     with MetricWriter.open(FakeMetric, p, encoding="latin-1") as writer:
         writer.write(FakeMetric(foo="rené", bar=1))
     assert p.read_bytes() == "foo\tbar\nrené\t1\n".encode("latin-1")
+
+
+def test_writer_open_closes_owned_file(tmp_path: Path, mocker: MockerFixture) -> None:
+    """MetricWriter.open closes the file it owns when the context exits."""
+    spy = mocker.spy(metric_writer, "xopen")
+    p = tmp_path / "out.tsv"
+    with MetricWriter.open(FakeMetric, p) as writer:
+        writer.write(FakeMetric(foo="abc", bar=1))
+    # `open` opened exactly one file; spy_return is that handle, which must now be closed.
+    assert spy.spy_return.closed
+
+
+def test_writer_open_closes_owned_file_on_exception(tmp_path: Path, mocker: MockerFixture) -> None:
+    """MetricWriter.open closes the file it owns even when the context body raises."""
+    spy = mocker.spy(metric_writer, "xopen")
+    p = tmp_path / "out.tsv"
+    with pytest.raises(RuntimeError, match="boom"):
+        with MetricWriter.open(FakeMetric, p) as writer:
+            writer.write(FakeMetric(foo="abc", bar=1))
+            raise RuntimeError("boom")
+    assert spy.spy_return.closed
