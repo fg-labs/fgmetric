@@ -253,9 +253,7 @@ class CounterPivotTable(BaseModel):
             return data
 
         # Replace the counter field with one column per enum member. Iterate the enum (not the
-        # Counter's own keys) so that members absent from the Counter are emitted as 0 rather than
-        # omitted; omitting them would leave the header's column empty and break read-back, which
-        # parses an empty cell as a missing integer.
+        # Counter's own keys) so that members absent from the Counter are emitted as 0
         assert self._counter_enum is not None  # not None iff _counter_fieldname is not None
         counts = data.pop(self._counter_fieldname)
         for member in self._counter_enum:
