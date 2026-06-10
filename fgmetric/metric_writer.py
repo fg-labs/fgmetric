@@ -97,7 +97,7 @@ class MetricWriter[T: Metric]:
         Args:
             metric: An instance of the writer's metric class.
         """
-        self._writer.writerow(metric.model_dump(mode="json"))
+        self._writer.writerow(metric.model_dump(mode="json", by_alias=True))
 
     def writeall(self, metrics: Iterable[T]) -> None:
         """

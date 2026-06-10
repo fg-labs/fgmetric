@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import assert_type
 
 import pytest
+from pydantic import Field
 
 from fgmetric import Metric
 from fgmetric import MetricWriter
@@ -81,6 +82,20 @@ def test_writer_does_not_close_caller_handle() -> None:
     writer = MetricWriter(FakeMetric, sink)
     writer.write(FakeMetric(foo="abc", bar=1))
     assert not sink.closed
+
+
+def test_writer_uses_field_aliases() -> None:
+    """A field alias appears in both the header and the rows."""
+
+    class AliasMetric(Metric):
+        name: str
+        read_count: int = Field(alias="count")
+
+    sink = StringIO()
+    writer = MetricWriter(AliasMetric, sink)
+    # `read_count` must be populated via its alias.
+    writer.write(AliasMetric(name="foo", count=100))
+    assert sink.getvalue() == "name\tcount\nfoo\t100\n"
 
 
 def test_writer_open_writes_header_and_rows(tmp_path: Path) -> None:
