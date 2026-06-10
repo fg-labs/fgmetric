@@ -209,6 +209,35 @@ def test_counter_pivot_table_of_enum(tmp_path: Path) -> None:
             next(f)
 
 
+def test_counter_pivot_table_roundtrip_with_absent_member(tmp_path: Path) -> None:
+    """A Counter missing an enum member serializes that member as 0 and reads back cleanly."""
+
+    @unique
+    class FakeEnum(StrEnum):
+        FOO = "foo"
+        BAR = "bar"
+
+    class FakeMetric(Metric):
+        name: str
+        counts: Counter[FakeEnum]
+
+    # BAR is absent on construction; it must be written as 0, not as an empty cell. Otherwise the
+    # header's "bar" column is left empty on disk and read-back fails parsing "" as an int.
+    fpath = tmp_path / "test.txt"
+    writer: MetricWriter[FakeMetric]
+    with MetricWriter.open(FakeMetric, fpath) as writer:
+        writer.write(FakeMetric(name="Nils", counts=Counter({FakeEnum.FOO: 5})))
+
+    assert fpath.read_text() == "name\tfoo\tbar\nNils\t5\t0\n"
+
+    with MetricReader.open(FakeMetric, fpath) as reader:
+        metrics = list(reader)
+
+    assert metrics == [
+        FakeMetric(name="Nils", counts=Counter({FakeEnum.FOO: 5, FakeEnum.BAR: 0})),
+    ]
+
+
 def test_counter_pivot_table_model_dump_json_mode() -> None:
     """Test that model_dump(mode='json') works with Counter pivot tables."""
 
