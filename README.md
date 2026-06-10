@@ -62,11 +62,10 @@ with open("metrics.tsv") as f:
 `fgmetric` replaces this with:
 
 ```py
-with MetricReader.open(AlignmentMetric, path) as reader:
-    for metric in reader:
-        # metric.mapping_quality is already an int
-        # metric.is_duplicate is already a bool
-        # metric.score is already Optional[float]
+for metric in AlignmentMetric.read(path):
+    # metric.mapping_quality is already an int
+    # metric.is_duplicate is already a bool
+    # metric.score is already Optional[float]
 ```
 
 **How it compares:**
@@ -92,9 +91,8 @@ Then read or write:
 
 ```python
 # Reading
-with MetricReader.open(AlignmentMetric, "alignments.tsv") as reader:
-    for metric in reader:
-        print(f"{metric.read_name}: MQ={metric.mapping_quality}")
+for metric in AlignmentMetric.read("alignments.tsv"):
+    print(f"{metric.read_name}: MQ={metric.mapping_quality}")
 
 # Writing
 metrics = [
@@ -103,6 +101,16 @@ metrics = [
 ]
 with MetricWriter.open(AlignmentMetric, "output.tsv") as writer:
     writer.writeall(metrics)
+```
+
+To read from an open file handle or any other text IO source (e.g. `StringIO`), use `MetricReader` directly:
+
+```python
+# Reading from an IO source
+with open("alignments.tsv") as handle:
+    reader = MetricReader(AlignmentMetric, handle)
+    for metric in reader:
+        print(f"{metric.read_name}: MQ={metric.mapping_quality}")
 ```
 
 Example input file (`alignments.tsv`):
@@ -123,9 +131,8 @@ The field delimiter is inferred from the file extension, so common formats need 
 
 ```python
 # Comma-delimited, inferred from the .csv extension
-with MetricReader.open(MyMetric, "data.csv") as reader:
-    for metric in reader:
-        ...
+for metric in MyMetric.read("data.csv"):
+    ...
 ```
 
 Pass `delimiter=` to override inference, or to read or write a file whose extension isn't recognized. An unrecognized extension with no explicit `delimiter` raises `ValueError`.
@@ -141,9 +148,8 @@ with MetricWriter.open(MyMetric, "output.dat", delimiter="|") as writer:
 Reading and writing transparently handle gzip, bzip2, and xz files based on the path extension (via [xopen](https://github.com/pycompression/xopen)):
 
 ```python
-with MetricReader.open(AlignmentMetric, "alignments.tsv.gz") as reader:
-    for metric in reader:
-        ...
+for metric in AlignmentMetric.read("alignments.tsv.gz"):
+    ...
 
 with MetricWriter.open(AlignmentMetric, "output.tsv.bz2") as writer:
     writer.writeall(metrics)

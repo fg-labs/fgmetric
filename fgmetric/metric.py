@@ -1,5 +1,9 @@
 from abc import ABC
+from collections.abc import Iterator
+from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
+from typing import Self
 
 from pydantic import BaseModel
 from pydantic import model_validator
@@ -7,6 +11,7 @@ from pydantic import model_validator
 from fgmetric._typing_extensions import is_optional
 from fgmetric.collections import CounterPivotTable
 from fgmetric.collections import DelimitedList
+from fgmetric.metric_reader import MetricReader
 
 
 class Metric(
@@ -40,19 +45,90 @@ class Metric(
 
     Example:
         ```python
-        from fgmetric import MetricReader
-
         class AlignmentMetric(Metric):
             read_name: str
             mapping_quality: int
             is_duplicate: bool = False
 
         # Read metrics from a TSV file
-        with MetricReader.open(AlignmentMetric, "metrics.txt") as reader:
-            for metric in reader:
-                print(metric.read_name, metric.mapping_quality)
+        for metric in AlignmentMetric.read("metrics.txt"):
+            print(metric.read_name, metric.mapping_quality)
         ```
     """
+
+    @classmethod
+    def read(
+        cls,
+        path: Path | str,
+        delimiter: str = "\t",
+        fieldnames: Sequence[str] | None = None,
+        encoding: str = "utf-8-sig",
+    ) -> Iterator[Self]:
+        """
+        Read Metric instances from a file path.
+
+        Thin wrapper around `MetricReader.open()`. This is a lazy generator: the file is opened
+        on first iteration (not when `read()` is called) and closed when the generator is
+        exhausted or closed. To read from an open handle or other text IO source, use
+        `MetricReader` directly.
+
+        Compression is detected automatically from the file extension: `.gz`, `.bz2`, and `.xz`
+        files are transparently decompressed.
+
+        By default, when `fieldnames` is omitted, the first row of the input file is read as
+        the header.
+
+        When `fieldnames` is supplied, the file is assumed to be headerless and every row is
+        read as data. Rows shorter than `fieldnames` produce `None` for the missing fields,
+        which then go through normal model validation (raising `ValidationError` for required
+        fields).
+
+        As a safeguard, if the first row exactly matches `fieldnames` it is treated as a
+        forgotten header and `ValueError` is raised. Passing `fieldnames` is not a way to
+        override an existing header - to map differently-named header columns to model fields,
+        declare Pydantic field aliases on the `Metric` subclass.
+
+        Args:
+            path: Filesystem path to the input file.
+            delimiter: The input file delimiter.
+            fieldnames: Optional sequence of field names. If provided, the input
+                is treated as headerless and these names are used as the column
+                headers.
+            encoding: The text encoding used to decode the file.
+
+        Yields:
+            Instances of the calling Metric subclass, one per data row.
+
+        Raises:
+            ValueError: If `fieldnames` is supplied and the first row appears to be a header
+                that matches it.
+
+        Example:
+            Reading a file that has a header row:
+
+            ```python
+            for m in AlignmentMetric.read(Path("out.tsv")):
+                print(m.read_name, m.mapping_quality)
+            ```
+
+            Reading a headerless file by supplying column names:
+
+            ```python
+            for m in AlignmentMetric.read(
+                Path("out.tsv"),
+                fieldnames=["read_name", "mapping_quality"],
+            ):
+                print(m.read_name, m.mapping_quality)
+            ```
+        """
+        with MetricReader.open(
+            cls,
+            path,
+            delimiter=delimiter,
+            fieldnames=fieldnames,
+            encoding=encoding,
+        ) as reader:
+            yield from reader
 
     # NB: "Before" validators (mode="before") run before field validators such as
     # `DelimitedList._split_lists()`. Empty strings in Optional fields will always be converted to
