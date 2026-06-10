@@ -38,7 +38,7 @@ def test_roundtrip_scalar_optional(tmp_path: Path) -> None:
 
 
 def test_roundtrip_counter(tmp_path: Path) -> None:
-    """A Counter[StrEnum] field round-trips through a full write-then-read cycle."""
+    """A fully-populated Counter[StrEnum] field round-trips through write then read."""
 
     @unique
     class FakeEnum(StrEnum):
@@ -49,6 +49,7 @@ def test_roundtrip_counter(tmp_path: Path) -> None:
         name: str
         counts: Counter[FakeEnum]
 
+    # Fully-populated case only; the absent-member path (must serialize as 0) is fixed in #60.
     expected = [
         CounterMetric(name="alice", counts=Counter({FakeEnum.FOO: 1, FakeEnum.BAR: 2})),
         CounterMetric(name="bob", counts=Counter({FakeEnum.FOO: 3, FakeEnum.BAR: 4})),
