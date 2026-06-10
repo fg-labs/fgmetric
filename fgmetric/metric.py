@@ -1,5 +1,4 @@
 from abc import ABC
-from collections.abc import Iterator
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -63,14 +62,15 @@ class Metric(
         delimiter: str = "\t",
         fieldnames: Sequence[str] | None = None,
         encoding: str = "utf-8-sig",
-    ) -> Iterator[Self]:
+    ) -> list[Self]:
         """
-        Read Metric instances from a file path.
+        Read all Metric instances from a file path.
 
-        Thin wrapper around `MetricReader.open()`. This is a lazy generator: the file is opened
-        on first iteration (not when `read()` is called) and closed when the generator is
-        exhausted or closed. To read from an open handle or other text IO source, use
-        `MetricReader` directly.
+        Thin wrapper around `MetricReader.open()`. The entire file is read eagerly: it is
+        opened, parsed, and closed before this method returns, so IO and validation errors are
+        raised at the call site. To stream metrics from a large file without holding them all
+        in memory, or to read from an open handle or other text IO source, use `MetricReader`
+        directly.
 
         Compression is detected automatically from the file extension: `.gz`, `.bz2`, and `.xz`
         files are transparently decompressed.
@@ -96,8 +96,8 @@ class Metric(
                 headers.
             encoding: The text encoding used to decode the file.
 
-        Yields:
-            Instances of the calling Metric subclass, one per data row.
+        Returns:
+            A list of instances of the calling Metric subclass, one per data row.
 
         Raises:
             ValueError: If `fieldnames` is supplied and the first row appears to be a header
@@ -128,7 +128,7 @@ class Metric(
             fieldnames=fieldnames,
             encoding=encoding,
         ) as reader:
-            yield from reader
+            return list(reader)
 
     # NB: "Before" validators (mode="before") run before field validators such as
     # `DelimitedList._split_lists()`. Empty strings in Optional fields will always be converted to

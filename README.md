@@ -103,6 +103,15 @@ with MetricWriter.open(AlignmentMetric, "output.tsv") as writer:
     writer.writeall(metrics)
 ```
 
+`Metric.read()` reads the whole file into a list. To stream metrics one at a time without holding them all in memory, use `MetricReader.open()`:
+
+```python
+# Streaming from a path
+with MetricReader.open(AlignmentMetric, "alignments.tsv") as reader:
+    for metric in reader:
+        print(f"{metric.read_name}: MQ={metric.mapping_quality}")
+```
+
 To read from an open file handle or any other text IO source (e.g. `StringIO`), use `MetricReader` directly:
 
 ```python
