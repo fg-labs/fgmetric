@@ -70,7 +70,7 @@ def test_roundtrip_empty_file(tmp_path: Path) -> None:
         writer.writeall([])
 
     # The writer emits the header on context entry, so the file is header-only.
-    assert p.read_text() == "name\tvalue\n"
+    assert p.read_bytes() == b"name\tvalue\n"
 
     with MetricReader.open(SimpleMetric, p) as reader:
         assert list(reader) == []
