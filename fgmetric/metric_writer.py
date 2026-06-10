@@ -8,6 +8,7 @@ from typing import TextIO
 
 from xopen import xopen
 
+from fgmetric._delimiter import infer_delimiter
 from fgmetric.metric import Metric
 
 
@@ -55,7 +56,7 @@ class MetricWriter[T: Metric]:
         cls,
         metric_class: type[T],
         path: Path | str,
-        delimiter: str = "\t",
+        delimiter: str | None = None,
         lineterminator: str = "\n",
         encoding: str = "utf-8",
     ) -> Iterator[Self]:
@@ -74,12 +75,19 @@ class MetricWriter[T: Metric]:
         Args:
             metric_class: Metric class.
             path: Filesystem path to the output file.
-            delimiter: The output file delimiter.
+            delimiter: The output file delimiter. When `None` (the default), the delimiter is
+                inferred from the file extension: `.csv` → comma; `.tsv`, `.txt`, `.tab`, or
+                any extension ending in `metrics` → tab — ignoring any trailing compression
+                suffix. Unrecognized extensions raise `ValueError`.
             lineterminator: The string used to terminate lines.
             encoding: The text encoding used to write the file.
 
         Yields:
             A `MetricWriter` over the opened file.
+
+        Raises:
+            ValueError: If `delimiter` is omitted and the delimiter cannot be inferred from
+                the file extension.
 
         Example:
             ```python
@@ -87,6 +95,8 @@ class MetricWriter[T: Metric]:
                 writer.writeall(metrics)
             ```
         """
+        if delimiter is None:
+            delimiter = infer_delimiter(path)
         with xopen(path, mode="wt", encoding=encoding) as handle:
             yield cls(metric_class, handle, delimiter, lineterminator)
 

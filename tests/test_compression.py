@@ -50,6 +50,26 @@ def test_round_trip_compressed(tmp_path: Path, ext: str) -> None:
         assert list(reader) == expected
 
 
+@pytest.mark.parametrize("ext", ["", ".gz", ".bz2", ".xz"])
+def test_round_trip_csv_with_inferred_delimiter(tmp_path: Path, ext: str) -> None:
+    """Test that delimiter inference composes with compression suffixes on round trip."""
+    p = tmp_path / f"metrics.csv{ext}"
+    expected = [ExampleMetric(name="alice", value=1), ExampleMetric(name="bob", value=2)]
+    with MetricWriter.open(ExampleMetric, p) as writer:
+        writer.writeall(expected)
+    with MetricReader.open(ExampleMetric, p) as reader:
+        assert list(reader) == expected
+
+
+def test_gzipped_csv_is_comma_delimited(tmp_path: Path) -> None:
+    """A .csv.gz file written without an explicit delimiter is comma-delimited inside."""
+    p = tmp_path / "out.csv.gz"
+    with MetricWriter.open(ExampleMetric, p) as writer:
+        writer.write(ExampleMetric(name="alice", value=1))
+    with gzip.open(p, mode="rt", encoding="utf-8") as f:
+        assert f.read() == "name,value\nalice,1\n"
+
+
 def test_gzipped_file_is_actually_gzipped(tmp_path: Path) -> None:
     """A .gz file written by MetricWriter.open has the gzip magic bytes."""
     p = tmp_path / "out.tsv.gz"
