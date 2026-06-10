@@ -93,7 +93,7 @@ def test_writer_uses_field_aliases() -> None:
 
     sink = StringIO()
     writer = MetricWriter(AliasMetric, sink)
-    # `read_count` must be populated via its alias; the writer emits that alias, not "read_count".
+    # `read_count` must be populated via its alias.
     writer.write(AliasMetric(name="foo", count=100))
     assert sink.getvalue() == "name\tcount\nfoo\t100\n"
 
