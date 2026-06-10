@@ -1,6 +1,5 @@
 from collections.abc import Iterable
 from collections.abc import Iterator
-from collections.abc import Sequence
 from contextlib import contextmanager
 from csv import DictReader
 from csv import DictWriter
@@ -18,7 +17,7 @@ def _read_existing_header(
     path: Path | str,
     delimiter: str,
     encoding: str,
-) -> Sequence[str] | None:
+) -> list[str] | None:
     """
     Return the header row of an existing, non-empty file, or `None`.
 
@@ -34,18 +33,17 @@ def _read_existing_header(
     Returns:
         The parsed header row, or `None` if the file is missing or empty.
     """
-    try:
-        # A zero-byte file is not a valid compressed stream; checking the size first avoids the
-        # bz2/xz decompressors raising EOFError when xopen tries to read an empty `.bz2`/`.xz`.
-        if Path(path).stat().st_size == 0:
-            return None
-    except FileNotFoundError:
+    file = Path(path)
+    # A zero-byte file is not a valid compressed stream; checking the size first avoids the
+    # bz2/xz decompressors raising EOFError when xopen tries to read an empty `.bz2`/`.xz`.
+    if not file.exists() or file.stat().st_size == 0:
         return None
     with xopen(path, mode="rt", encoding=encoding) as handle:
-        return DictReader(handle, delimiter=delimiter).fieldnames
+        fieldnames = DictReader(handle, delimiter=delimiter).fieldnames
+        return None if fieldnames is None else list(fieldnames)
 
 
-def _append_writes_header(
+def _append_needs_header(
     metric_class: type[Metric],
     path: Path | str,
     delimiter: str,
@@ -192,7 +190,7 @@ class MetricWriter[T: Metric]:
         xmode: Literal["wt", "at"]
         if mode == "a":
             xmode = "at"
-            write_header = _append_writes_header(metric_class, path, delimiter, encoding)
+            write_header = _append_needs_header(metric_class, path, delimiter, encoding)
         else:
             xmode = "wt"
             write_header = True
