@@ -59,6 +59,7 @@ class Metric(
     def read(
         cls,
         path: Path | str,
+        # NB: these defaults mirror `MetricReader.open()`; keep them in sync.
         delimiter: str = "\t",
         fieldnames: Sequence[str] | None = None,
         encoding: str = "utf-8-sig",
@@ -66,58 +67,43 @@ class Metric(
         """
         Read all Metric instances from a file path.
 
-        Thin wrapper around `MetricReader.open()`. The entire file is read eagerly: it is
-        opened, parsed, and closed before this method returns, so IO and validation errors are
-        raised at the call site. To stream metrics from a large file without holding them all
-        in memory, or to read from an open handle or other text IO source, use `MetricReader`
-        directly.
+        Eager wrapper around `MetricReader.open()`: the file is opened, parsed, and closed
+        before this method returns, collecting every row into a list. Because reading happens
+        up front, IO and validation errors surface here at the call site rather than partway
+        through iteration.
 
-        Compression is detected automatically from the file extension: `.gz`, `.bz2`, and `.xz`
-        files are transparently decompressed.
-
-        By default, when `fieldnames` is omitted, the first row of the input file is read as
-        the header.
-
-        When `fieldnames` is supplied, the file is assumed to be headerless and every row is
-        read as data. Rows shorter than `fieldnames` produce `None` for the missing fields,
-        which then go through normal model validation (raising `ValidationError` for required
-        fields).
-
-        As a safeguard, if the first row exactly matches `fieldnames` it is treated as a
-        forgotten header and `ValueError` is raised. Passing `fieldnames` is not a way to
-        override an existing header - to map differently-named header columns to model fields,
-        declare Pydantic field aliases on the `Metric` subclass.
+        See `MetricReader.open()` for the file-handling behavior shared by both APIs - encoding,
+        automatic decompression of `.gz`/`.bz2`/`.xz` files, and how `fieldnames` selects
+        header vs. headerless parsing. To stream a large file without holding every row in
+        memory, or to read from an already-open handle or other text IO source, use
+        `MetricReader` directly.
 
         Args:
             path: Filesystem path to the input file.
             delimiter: The input file delimiter.
-            fieldnames: Optional sequence of field names. If provided, the input
-                is treated as headerless and these names are used as the column
-                headers.
+            fieldnames: Optional sequence of field names. If provided, the input is treated as
+                headerless and these names are used as the column headers.
             encoding: The text encoding used to decode the file.
 
         Returns:
             A list of instances of the calling Metric subclass, one per data row.
 
         Raises:
-            ValueError: If `fieldnames` is supplied and the first row appears to be a header
-                that matches it.
+            FileNotFoundError: If `path` does not exist.
+            LookupError: If `encoding` is not a known codec.
+            UnicodeDecodeError: If the file's bytes cannot be decoded using `encoding`.
+            ValueError: If `fieldnames` is supplied and the first row matches it (a likely
+                forgotten header).
+            ValidationError: If a row fails `Metric` validation, e.g. a missing required field
+                or a value of the wrong type.
 
         Example:
-            Reading a file that has a header row:
+            `read` is eager and returns a list, so the whole file is available at once:
 
             ```python
-            for m in AlignmentMetric.read(Path("out.tsv")):
-                print(m.read_name, m.mapping_quality)
-            ```
-
-            Reading a headerless file by supplying column names:
-
-            ```python
-            for m in AlignmentMetric.read(
-                Path("out.tsv"),
-                fieldnames=["read_name", "mapping_quality"],
-            ):
+            metrics = AlignmentMetric.read("metrics.txt")
+            print(f"read {len(metrics)} rows")
+            for m in metrics:
                 print(m.read_name, m.mapping_quality)
             ```
         """
