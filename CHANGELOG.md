@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Introduce `MetricReader` for iterating metrics from any text-IO source (#41)
 - Add an `encoding` kwarg on `MetricReader.open` and `MetricWriter.open` (#43)
 - Transparent gzip/bz2/xz support via `xopen` (#44)
+- Infer the delimiter from the file extension in `MetricReader.open`/`MetricWriter.open`; pass `delimiter=` to override (#61)
 
 ### Changed
 

@@ -169,6 +169,26 @@ def test_list_with_optional_elements_roundtrip() -> None:
     assert serialized["values"] == "1,,3"
 
 
+def test_list_field_round_trips_through_inferred_csv(tmp_path: Path) -> None:
+    """A list field survives the inferred comma CSV delimiter via CSV quoting."""
+
+    class FakeMetric(Metric):
+        name: str
+        tags: list[str]
+
+    p = tmp_path / "metrics.csv"  # `.csv` infers a comma delimiter
+    metric = FakeMetric(name="alice", tags=["x", "y", "z"])
+    with MetricWriter.open(FakeMetric, p) as writer:
+        writer.write(metric)
+
+    # The list serializes to "x,y,z", whose commas collide with the comma delimiter, so csv
+    # quote-protects the field on disk rather than splitting it into extra columns.
+    assert p.read_text() == 'name,tags\nalice,"x,y,z"\n'
+
+    with MetricReader.open(FakeMetric, p) as reader:
+        assert list(reader) == [metric]
+
+
 def test_counter_pivot_table_of_enum(tmp_path: Path) -> None:
     """Test that we can read and write Counters as pivot tables."""
 
