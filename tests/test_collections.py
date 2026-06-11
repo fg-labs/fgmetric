@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Annotated
 
 import pytest
+from pydantic import Field
 from pydantic import PlainSerializer
 
 from fgmetric import Metric
@@ -355,3 +356,47 @@ def test_counter_pivot_table_raises_if_optional_counter() -> None:
             counts: Counter[FakeEnum] | None
 
     assert str(excinfo.value) == "Optional Counter fields are not supported: 'counts'"
+
+
+def test_counter_pivot_table_raises_if_aliased_counter() -> None:
+    """
+    A Counter field may not declare an alias of any kind.
+
+    A Counter pivots into one column per enum member, so its field name never appears as a column
+    on disk. An alias would therefore have nothing to rename, and (under ``by_alias=True``) would
+    desync the serializer's lookup key from the dumped dict. Reject all three alias forms at
+    class-definition time rather than crash later during serialization.
+    """
+
+    @unique
+    class FakeEnum(StrEnum):
+        FOO = "foo"
+
+    expected = (
+        "Aliased Counter fields are not supported: 'counts'. A Counter pivots into one column per "
+        "enum member, so it has no on-disk column for an alias to rename."
+    )
+
+    with pytest.raises(TypeError) as excinfo:
+
+        class AliasMetric(Metric):
+            name: str
+            counts: Counter[FakeEnum] = Field(alias="cts")
+
+    assert str(excinfo.value) == expected
+
+    with pytest.raises(TypeError) as excinfo:
+
+        class ValidationAliasMetric(Metric):
+            name: str
+            counts: Counter[FakeEnum] = Field(validation_alias="cts")
+
+    assert str(excinfo.value) == expected
+
+    with pytest.raises(TypeError) as excinfo:
+
+        class SerializationAliasMetric(Metric):
+            name: str
+            counts: Counter[FakeEnum] = Field(serialization_alias="cts")
+
+    assert str(excinfo.value) == expected
