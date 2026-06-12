@@ -23,7 +23,9 @@ class CounterPivotTable(BaseModel):
     handled specially.
 
     This mixin permits only *one* field to be annotated as `Counter[T]`, and `T` must be a `StrEnum`
-    type.
+    type. The Counter field may not be Optional, and may not declare an alias: it pivots into one
+    column per enum member, so its field name never appears as a column on disk and there is
+    nothing for an alias to rename.
 
     During validation, fields in the input which match members of the enum type will be collected
     and included in a `Counter` on the validated model. If any members of the enum type are not
@@ -99,6 +101,9 @@ class CounterPivotTable(BaseModel):
         Raises:
             TypeError: If the user-specified model includes more than one field annotated as
                 `Counter[T]`.
+            TypeError: If the Counter field is Optional.
+            TypeError: If the Counter field declares an alias (via `alias`, `validation_alias`, or
+                `serialization_alias`).
 
         Examples:
             >>> # One counter field -> returns its name
@@ -135,6 +140,21 @@ class CounterPivotTable(BaseModel):
             counter_field_info: FieldInfo = cls.model_fields[counter_fieldname]
             if is_optional(counter_field_info.annotation):
                 raise TypeError(f"Optional Counter fields are not supported: '{counter_fieldname}'")
+
+            # A Counter has no single on-disk column: it pivots into one column per enum member, so
+            # its field name never appears in the file. An alias would have nothing to rename, and
+            # under `by_alias=True` it would desync the serializer's lookup key from the dumped
+            # dict (see issue #68). Reject all three alias forms here rather than crash later.
+            if (
+                counter_field_info.alias is not None
+                or counter_field_info.validation_alias is not None
+                or counter_field_info.serialization_alias is not None
+            ):
+                raise TypeError(
+                    f"Aliased Counter fields are not supported: '{counter_fieldname}'. A Counter "
+                    "pivots into one column per enum member, so it has no on-disk column for an "
+                    "alias to rename."
+                )
 
         return counter_fieldname
 
