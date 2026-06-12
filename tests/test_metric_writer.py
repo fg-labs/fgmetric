@@ -1,4 +1,5 @@
 from collections import Counter
+from collections.abc import Callable
 from enum import StrEnum
 from enum import unique
 from io import StringIO
@@ -200,3 +201,43 @@ def test_writer_open_closes_owned_file_on_exception(tmp_path: Path, mocker: Mock
             writer.write(FakeMetric(foo="abc", bar=1))
             raise RuntimeError("boom")
     assert spy.spy_return.closed
+
+
+def test_writer_open_raises_file_not_found_for_missing_parent(tmp_path: Path) -> None:
+    """MetricWriter.open raises FileNotFoundError when the parent directory does not exist."""
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        with MetricWriter.open(FakeMetric, tmp_path / "missing" / "out.tsv"):
+            pass
+
+
+def test_writer_open_raises_is_a_directory_for_directory(tmp_path: Path) -> None:
+    """MetricWriter.open raises IsADirectoryError when the path is a directory."""
+    with pytest.raises(IsADirectoryError, match="is a directory"):
+        with MetricWriter.open(FakeMetric, tmp_path):
+            pass
+
+
+def test_writer_open_raises_permission_error_for_readonly_file(
+    tmp_path: Path, chmod: Callable[[Path, int], None]
+) -> None:
+    """MetricWriter.open raises PermissionError when the target file is not writable."""
+    p = tmp_path / "out.tsv"
+    p.write_text("locked\n")
+    chmod(p, 0o444)
+    with pytest.raises(PermissionError, match="not writable"):
+        with MetricWriter.open(FakeMetric, p):
+            pass
+    # The check must fire before the file is opened, so the contents are untouched.
+    assert p.read_text() == "locked\n"
+
+
+def test_writer_open_raises_permission_error_for_readonly_parent(
+    tmp_path: Path, chmod: Callable[[Path, int], None]
+) -> None:
+    """MetricWriter.open raises PermissionError when the parent directory is not writable."""
+    d = tmp_path / "readonly"
+    d.mkdir()
+    chmod(d, 0o555)
+    with pytest.raises(PermissionError, match="not writable"):
+        with MetricWriter.open(FakeMetric, d / "out.tsv"):
+            pass

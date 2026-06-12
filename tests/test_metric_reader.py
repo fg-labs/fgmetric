@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from io import StringIO
 from pathlib import Path
 from typing import assert_type
@@ -118,6 +119,39 @@ def test_open_respects_encoding(tmp_path: Path) -> None:
     with MetricReader.open(ExampleMetric, p, encoding="latin-1") as reader:
         metrics = list(reader)
     assert metrics == [ExampleMetric(name="rené", value=1)]
+
+
+def test_open_raises_file_not_found_for_missing_file(tmp_path: Path) -> None:
+    """MetricReader.open raises FileNotFoundError when the file does not exist."""
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        with MetricReader.open(ExampleMetric, tmp_path / "missing.tsv"):
+            pass
+
+
+def test_open_raises_file_not_found_for_missing_compressed_file(tmp_path: Path) -> None:
+    """MetricReader.open raises FileNotFoundError for a missing compressed file too."""
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        with MetricReader.open(ExampleMetric, tmp_path / "missing.tsv.gz"):
+            pass
+
+
+def test_open_raises_is_a_directory_for_directory(tmp_path: Path) -> None:
+    """MetricReader.open raises IsADirectoryError when the path is a directory."""
+    with pytest.raises(IsADirectoryError, match="is a directory"):
+        with MetricReader.open(ExampleMetric, tmp_path):
+            pass
+
+
+def test_open_raises_permission_error_for_unreadable_file(
+    tmp_path: Path, chmod: Callable[[Path, int], None]
+) -> None:
+    """MetricReader.open raises PermissionError when the file is not readable."""
+    p = tmp_path / "metrics.tsv"
+    p.write_text("name\tvalue\nalice\t1\n")
+    chmod(p, 0o000)
+    with pytest.raises(PermissionError, match="not readable"):
+        with MetricReader.open(ExampleMetric, p):
+            pass
 
 
 # ======================================================================================
