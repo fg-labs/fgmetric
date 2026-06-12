@@ -147,6 +147,32 @@ def test_writer_open_does_not_touch_file_until_enter(tmp_path: Path) -> None:
     assert p.read_text() == "existing content\n"
 
 
+def test_writer_open_infers_delimiter_from_extension(tmp_path: Path) -> None:
+    """Test that MetricWriter.open writes a .csv file as comma-delimited by default."""
+    p = tmp_path / "out.csv"
+    with MetricWriter.open(FakeMetric, p) as writer:
+        writer.write(FakeMetric(foo="abc", bar=1))
+    assert p.read_text() == "foo,bar\nabc,1\n"
+
+
+def test_writer_open_explicit_delimiter_overrides_inference(tmp_path: Path) -> None:
+    """Test that an explicit delimiter wins over the extension-inferred one."""
+    p = tmp_path / "out.csv"
+    with MetricWriter.open(FakeMetric, p, delimiter="\t") as writer:
+        writer.write(FakeMetric(foo="abc", bar=1))
+    assert p.read_text() == "foo\tbar\nabc\t1\n"
+
+
+def test_writer_open_raises_for_uninferrable_delimiter(tmp_path: Path) -> None:
+    """Test that an unrecognized extension raises when no delimiter is given."""
+    p = tmp_path / "out.dat"
+    with pytest.raises(ValueError, match="Could not infer a delimiter"):
+        with MetricWriter.open(FakeMetric, p):
+            pass
+    # The file must not be created when inference fails.
+    assert not p.exists()
+
+
 def test_writer_open_respects_encoding(tmp_path: Path) -> None:
     """Test that MetricWriter.open writes with the specified encoding."""
     p = tmp_path / "out.tsv"

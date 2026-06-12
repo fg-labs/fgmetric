@@ -81,6 +81,36 @@ def test_open_requires_context_manager_usage(tmp_path: Path) -> None:
         list(cm)  # type: ignore[call-overload]
 
 
+def test_open_infers_delimiter_from_extension(tmp_path: Path) -> None:
+    """Test that MetricReader.open reads a .csv file as comma-delimited by default."""
+    p = tmp_path / "metrics.csv"
+    p.write_text("name,value\nalice,1\nbob,2\n")
+    with MetricReader.open(ExampleMetric, p) as reader:
+        metrics = list(reader)
+    assert metrics == [
+        ExampleMetric(name="alice", value=1),
+        ExampleMetric(name="bob", value=2),
+    ]
+
+
+def test_open_explicit_delimiter_overrides_inference(tmp_path: Path) -> None:
+    """Test that an explicit delimiter wins over the extension-inferred one."""
+    p = tmp_path / "metrics.csv"
+    p.write_text("name\tvalue\nalice\t1\n")
+    with MetricReader.open(ExampleMetric, p, delimiter="\t") as reader:
+        metrics = list(reader)
+    assert metrics == [ExampleMetric(name="alice", value=1)]
+
+
+def test_open_raises_for_uninferrable_delimiter(tmp_path: Path) -> None:
+    """Test that an unrecognized extension raises when no delimiter is given."""
+    p = tmp_path / "metrics.dat"
+    p.write_text("name\tvalue\nalice\t1\n")
+    with pytest.raises(ValueError, match="Could not infer a delimiter"):
+        with MetricReader.open(ExampleMetric, p):
+            pass
+
+
 def test_open_respects_encoding(tmp_path: Path) -> None:
     """Test that MetricReader.open decodes the file with the specified encoding."""
     p = tmp_path / "metrics.tsv"

@@ -117,18 +117,22 @@ Invalid data raises `pydantic.ValidationError` with details about which field fa
 
 ## Core Usage
 
-### Custom Delimiters
+### Delimiters
 
-Both reading and writing support custom delimiters for working with CSV or other formats:
+The field delimiter is inferred from the file extension, so common formats need no configuration: `.csv` is comma-delimited, while `.tsv`, `.txt`, `.tab`, and Picard-style `*metrics` files (e.g. `.insert_size_metrics`) are tab-delimited. A trailing compression suffix (`.gz`, `.bz2`, `.xz`) is ignored, so `data.csv.gz` is still comma-delimited.
 
 ```python
-# Reading CSV files
-with MetricReader.open(MyMetric, "data.csv", delimiter=",") as reader:
+# Comma-delimited, inferred from the .csv extension
+with MetricReader.open(MyMetric, "data.csv") as reader:
     for metric in reader:
         ...
+```
 
-# Writing CSV files
-with MetricWriter.open(MyMetric, "output.csv", delimiter=",") as writer:
+Pass `delimiter=` to override inference, or to read or write a file whose extension isn't recognized. An unrecognized extension with no explicit `delimiter` raises `ValueError`.
+
+```python
+# Pipe-delimited file with an unrecognized extension
+with MetricWriter.open(MyMetric, "output.dat", delimiter="|") as writer:
     ...
 ```
 

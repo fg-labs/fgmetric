@@ -10,6 +10,8 @@ from typing import Self
 
 from xopen import xopen
 
+from fgmetric._delimiter import infer_delimiter
+
 if TYPE_CHECKING:
     from fgmetric.metric import Metric
 
@@ -73,7 +75,7 @@ class MetricReader[T: Metric]:
         cls,
         metric_class: type[T],
         path: Path | str,
-        delimiter: str = "\t",
+        delimiter: str | None = None,
         fieldnames: Sequence[str] | None = None,
         encoding: str = "utf-8-sig",
     ) -> Iterator[Self]:
@@ -93,7 +95,10 @@ class MetricReader[T: Metric]:
         Args:
             metric_class: Metric class.
             path: Filesystem path to the input file.
-            delimiter: The input file delimiter.
+            delimiter: The input file delimiter. When `None` (the default), the delimiter is
+                inferred from the file extension: `.csv` → comma; `.tsv`, `.txt`, `.tab`, or
+                any extension ending in `metrics` → tab — ignoring any trailing compression
+                suffix. Unrecognized extensions raise `ValueError`.
             fieldnames: Optional sequence of field names. If provided, the input is
                 treated as headerless and these names are used as the column
                 headers.
@@ -102,6 +107,10 @@ class MetricReader[T: Metric]:
         Yields:
             A `MetricReader` over the opened file.
 
+        Raises:
+            ValueError: If `delimiter` is omitted and the delimiter cannot be inferred from
+                the file extension.
+
         Example:
             ```python
             with MetricReader.open(AlignmentMetric, "metrics.txt") as reader:
@@ -109,6 +118,8 @@ class MetricReader[T: Metric]:
                     ...
             ```
         """
+        if delimiter is None:
+            delimiter = infer_delimiter(path)
         with xopen(path, mode="rt", encoding=encoding) as handle:
             yield cls(metric_class, handle, delimiter, fieldnames)
 
