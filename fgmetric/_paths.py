@@ -19,6 +19,7 @@ def path_read_error(path: Path | str) -> OSError | None:
         describe the problem (`FileNotFoundError`, `IsADirectoryError`, or `PermissionError`).
     """
     path = Path(path)
+
     if not path.exists():
         # `exists()` follows symlinks, so a broken symlink reaches this branch even though the
         # link itself is present; name both ends of the link to point at the actual problem.
@@ -32,6 +33,7 @@ def path_read_error(path: Path | str) -> OSError | None:
         return IsADirectoryError(f"Path is a directory: {path}")
     if not os.access(path, os.R_OK):
         return PermissionError(f"File is not readable: {path}")
+
     return None
 
 
@@ -54,13 +56,16 @@ def path_write_error(path: Path | str) -> OSError | None:
         or `PermissionError`).
     """
     path = Path(path)
-    # Resolve symlinks before taking the parent: writing through a symlink creates or modifies
-    # the *target*, whose parent directory may differ from the symlink's own.
+
+    # Resolve symlinks before taking the parent
     parent = path.resolve().parent
-    if not parent.is_dir():
-        if parent.exists():
-            return NotADirectoryError(f"Parent is not a directory: {parent}")
+
+    # Parent must be an extant directory
+    if not parent.exists():
         return FileNotFoundError(f"Parent directory does not exist: {parent}")
+    if not parent.is_dir():
+        return NotADirectoryError(f"Parent is not a directory: {parent}")
+
     if path.is_dir():
         return IsADirectoryError(f"Path is a directory: {path}")
     if path.exists():
@@ -68,4 +73,5 @@ def path_write_error(path: Path | str) -> OSError | None:
             return PermissionError(f"File is not writable: {path}")
     elif not os.access(parent, os.W_OK | os.X_OK):
         return PermissionError(f"Parent directory is not writable: {parent}")
+
     return None
