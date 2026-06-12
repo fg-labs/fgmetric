@@ -9,6 +9,7 @@ from typing import TextIO
 from xopen import xopen
 
 from fgmetric._delimiter import infer_delimiter
+from fgmetric._paths import path_write_error
 from fgmetric.metric import Metric
 
 
@@ -86,6 +87,11 @@ class MetricWriter[T: Metric]:
             A `MetricWriter` over the opened file.
 
         Raises:
+            FileNotFoundError: If the parent directory of `path` does not exist.
+            NotADirectoryError: If the parent of `path` exists but is not a directory.
+            IsADirectoryError: If `path` is a directory.
+            PermissionError: If `path` exists but is not writable, or if `path` cannot be
+                created in its parent directory.
             ValueError: If `delimiter` is omitted and the delimiter cannot be inferred from
                 the file extension.
 
@@ -95,6 +101,8 @@ class MetricWriter[T: Metric]:
                 writer.writeall(metrics)
             ```
         """
+        if (error := path_write_error(path)) is not None:
+            raise error
         if delimiter is None:
             delimiter = infer_delimiter(path)
         with xopen(path, mode="wt", encoding=encoding) as handle:

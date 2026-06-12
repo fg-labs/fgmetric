@@ -11,6 +11,7 @@ from typing import Self
 from xopen import xopen
 
 from fgmetric._delimiter import infer_delimiter
+from fgmetric._paths import path_read_error
 
 if TYPE_CHECKING:
     from fgmetric.metric import Metric
@@ -108,6 +109,9 @@ class MetricReader[T: Metric]:
             A `MetricReader` over the opened file.
 
         Raises:
+            FileNotFoundError: If `path` does not exist.
+            IsADirectoryError: If `path` is a directory.
+            PermissionError: If `path` is not readable.
             ValueError: If `delimiter` is omitted and the delimiter cannot be inferred from
                 the file extension.
 
@@ -118,6 +122,8 @@ class MetricReader[T: Metric]:
                     ...
             ```
         """
+        if (error := path_read_error(path)) is not None:
+            raise error
         if delimiter is None:
             delimiter = infer_delimiter(path)
         with xopen(path, mode="rt", encoding=encoding) as handle:
