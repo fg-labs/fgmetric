@@ -105,9 +105,7 @@ def test_from_sql_null_becomes_none() -> None:
 
 def test_from_sql_resolves_field_alias() -> None:
     metrics = list(MetricReader.from_sql(AliasedMetric, "SELECT 'a' AS name, 60 AS mapq"))
-    assert len(metrics) == 1
-    assert metrics[0].name == "a"
-    assert metrics[0].mapping_quality == 60
+    assert metrics == [AliasedMetric(name="a", mapq=60)]
 
 
 def test_from_sql_missing_required_column_raises() -> None:

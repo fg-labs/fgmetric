@@ -24,12 +24,13 @@ if TYPE_CHECKING:
 
 class MetricReader[T: Metric]:
     """
-    Iterate `Metric` instances from a text IO source.
+    Iterate `Metric` instances from a parsed source.
 
     Constructed with any iterable of strings (file handle, StringIO, list of
     lines). The reader does not own the source; callers manage its lifecycle.
     Use the `open` classmethod to open and read a file in one step; unlike direct
     construction, `open` owns the file it opens and closes it on context exit.
+    Use `from_sql` to read from a DuckDB SQL query.
     """
 
     _metric_class: type[T]
