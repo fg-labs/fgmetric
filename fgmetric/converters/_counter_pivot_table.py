@@ -18,7 +18,9 @@ from fgmetric.record_model import RecordModel
 # NB: This mixin inherits `RecordModel` rather than `BaseModel` (unlike the other converters) so
 # that it can override `RecordModel._header_fieldnames` and call `super()` to reuse the default
 # alias-aware header. It is the only converter that rewrites the on-disk column set, so it is the
-# only one that needs the base header contract in scope.
+# only one that needs the base header contract in scope. Any future converter that also overrides
+# `_header_fieldnames` must likewise inherit `RecordModel` (so `super()` type-checks) and appear
+# before it in the model's MRO (so `super()` resolves to the base header, not `BaseModel`).
 class CounterPivotTable(RecordModel):
     """
     A mixin to support pivot table representations of Counters.
@@ -228,18 +230,18 @@ class CounterPivotTable(RecordModel):
             # -> ["name", "red", "green", "blue"]
             ```
         """
-        # The Counter field has no alias (aliases are rejected for Counter fields), so its
-        # serialized name equals its field name; drop it from the default header.
-        fieldnames = [
-            name for name in super()._header_fieldnames() if name != cls._counter_fieldname
-        ]
+        default_header = super()._header_fieldnames()
 
-        if cls._counter_enum is None:
+        if cls._counter_fieldname is None:
             # Short circuit if we don't have a Counter field
-            return fieldnames
+            return default_header
 
-        # Replace the dropped Counter field with one column per enum member
-        return fieldnames + [member.value for member in cls._counter_enum]
+        # The Counter field has no alias (aliases are rejected for Counter fields), so its
+        # serialized name equals its field name; drop it from the default header and replace it
+        # with one column per enum member.
+        assert cls._counter_enum is not None  # not None iff _counter_fieldname is not None
+        non_counter = [name for name in default_header if name != cls._counter_fieldname]
+        return non_counter + [member.value for member in cls._counter_enum]
 
     @final
     @model_validator(mode="before")
