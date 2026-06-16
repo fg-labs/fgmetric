@@ -1,21 +1,21 @@
 from abc import ABC
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import ClassVar
 from typing import Self
 
 from pydantic import BaseModel
-from pydantic import model_validator
 
-from fgmetric._typing_extensions import is_optional
 from fgmetric.converters import CounterPivotTable
 from fgmetric.converters import DelimitedList
+from fgmetric.converters import NullSentinels
 from fgmetric.metric_reader import MetricReader
 
 
 class Metric(
     DelimitedList,
     CounterPivotTable,
+    NullSentinels,
     BaseModel,
     ABC,
 ):
@@ -32,8 +32,9 @@ class Metric(
     header of the file. Subclasses should define their fields using Pydantic field annotations.
 
     `Metric` includes the following custom serialization/deserialization behaviors:
-    1. **Empty fields as None.** Any empty field in a file will be represented as `None` on the
-       deserialized model.
+    1. **Null sentinels.** Empty strings in Optional fields are converted to `None` before field
+       validation. The sentinel values converted to `None` can be overridden by the
+       `null_sentinels` class variable.
     2. **Delimited lists.** Any field typed as `list[T]` will be parsed from and serialized to a
        delimited string. The list delimiter may be controlled by the `collection_delimiter` class
        variable.
@@ -41,6 +42,8 @@ class Metric(
     Class Variables:
         collection_delimiter: A single-character delimiter used to split and join `list` fields
             during serialization/deserialization.
+        null_sentinels: The set of input strings that should be treated as `None` on Optional
+            fields during validation. Defaults to `frozenset({""})`.
 
     Example:
         ```python
@@ -54,6 +57,8 @@ class Metric(
             print(metric.read_name, metric.mapping_quality)
         ```
     """
+
+    null_sentinels: ClassVar[frozenset[str]] = frozenset({""})
 
     @classmethod
     def read(
@@ -115,35 +120,6 @@ class Metric(
             encoding=encoding,
         ) as reader:
             return list(reader)
-
-    # NB: "Before" validators (mode="before") run before field validators such as
-    # `DelimitedList._split_lists()`. Empty strings in Optional fields will always be converted to
-    # `None` before any field validators.
-    # For example, for delimited list parsing:
-    #   - When a field is defined as `list[T] | None`, this converts "" → None before _split_lists
-    #     sees it.
-    #   - When a field is defined as `list[T]`, "" passes through unchanged, then _split_lists
-    #     converts "" → [].
-    @model_validator(mode="before")
-    @classmethod
-    def _empty_field_to_none(cls, data: Any) -> Any:
-        """Treat any empty fields as None if the field is typed as Optional."""
-        if not isinstance(data, dict):
-            # short circuit
-            return data
-
-        data = dict(data)
-
-        for field, value in data.items():
-            info = cls.model_fields.get(field)
-            if info is None:
-                # Skip fields that aren't defined on the model - let the validation handle it
-                continue
-
-            if value == "" and is_optional(info.annotation):
-                data[field] = None
-
-        return data
 
     @classmethod
     def _header_fieldnames(cls) -> list[str]:
