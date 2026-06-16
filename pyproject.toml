@@ -43,6 +43,7 @@ dev = [
     "pytest-mock ~=3.14",
     "poethepoet ~=0.34",
     "pre-commit ~=4.0",
+    "duckdb >=1.0",
 ]
 ipython = [
     "ipython ~=9.2",
@@ -52,6 +53,9 @@ ipython = [
 benchmark = [
     "pytest-benchmark ~=5.1.0",
     "fgpyo ~=1.2.0",
+]
+duckdb = [
+    "duckdb >=1.0",
 ]
 
 [tool.poe.tasks]
