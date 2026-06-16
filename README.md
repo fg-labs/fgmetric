@@ -164,6 +164,32 @@ with MetricWriter.open(AlignmentMetric, "output.tsv.bz2") as writer:
     writer.writeall(metrics)
 ```
 
+### Reading from SQL (Parquet, Arrow, databases)
+
+With the optional `duckdb` extra (`pip install 'fgmetric[duckdb]'`), `MetricReader.from_sql` validates the rows of a SQL query as metrics. The query names its own source, so any backend [DuckDB](https://duckdb.org) can read works — Parquet, Arrow, JSON, CSV, SQLite, Postgres, and S3-hosted files — with no TSV intermediary:
+
+```python
+# A Parquet file (a transient in-memory connection is opened and closed for you):
+for metric in MetricReader.from_sql(AlignmentMetric, "SELECT * FROM 'metrics.parquet'"):
+    ...
+
+# Align a source's columns to your metric's fields with SQL `AS`:
+metrics = AlignmentMetric.from_sql("SELECT read AS read_name, mapq AS mapping_quality FROM tbl")
+```
+
+Unlike `open`, `from_sql` is not a context manager — it owns no file handle and returns a reader directly. `Metric.from_sql(query)` is the eager `list` form, mirroring `Metric.read(path)`.
+
+For backends that need engine setup (Postgres, custom secrets, `ATTACH`), pass a pre-configured connection; it is used as-is and never closed:
+
+```python
+import duckdb
+
+conn = duckdb.connect()
+conn.execute("INSTALL postgres; LOAD postgres")
+conn.execute("ATTACH 'dbname=metrics host=db' AS pg (TYPE postgres)")
+metrics = AlignmentMetric.from_sql("SELECT * FROM pg.alignment", connection=conn)
+```
+
 ### List Fields
 
 Fields typed as `list[T]` are automatically parsed from and serialized to delimited strings:
