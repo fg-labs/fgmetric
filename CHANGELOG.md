@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Add an `encoding` kwarg on `MetricReader.open` and `MetricWriter.open` (#43)
 - Transparent gzip/bz2/xz support via `xopen` (#44)
 - Infer the delimiter from the file extension in `MetricReader.open`/`MetricWriter.open`; pass `delimiter=` to override (#61)
+- Read metrics from a SQL query via `MetricReader.from_sql`/`Metric.from_sql`, backed by the optional `duckdb` extra; queries any source DuckDB can read (Parquet/Arrow/JSON/CSV/SQLite/Postgres/S3) (#52)
 
 ### Changed
 
