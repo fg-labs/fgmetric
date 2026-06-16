@@ -9,8 +9,8 @@ from pydantic import Field
 from pydantic import PlainSerializer
 
 from fgmetric import Metric
-from fgmetric import MetricReader
-from fgmetric import MetricWriter
+from fgmetric import ModelReader
+from fgmetric import ModelWriter
 
 
 def test_comma_delimited_list(tmp_path: Path) -> None:
@@ -30,7 +30,7 @@ def test_comma_delimited_list(tmp_path: Path) -> None:
         fout.write("Nils\t1,2,3\n")
         fout.write("Tim\t\n")
 
-    with MetricReader.open(FakeMetric, fpath_to_read) as reader:
+    with ModelReader.open(FakeMetric, fpath_to_read) as reader:
         metrics = list(reader)
 
     assert len(metrics) == 2
@@ -41,8 +41,8 @@ def test_comma_delimited_list(tmp_path: Path) -> None:
 
     # Test writing
     fpath_to_write = tmp_path / "written.txt"
-    writer: MetricWriter[FakeMetric]
-    with MetricWriter.open(FakeMetric, fpath_to_write) as writer:
+    writer: ModelWriter[FakeMetric]
+    with ModelWriter.open(FakeMetric, fpath_to_write) as writer:
         writer.writeall(metrics)
 
     with fpath_to_write.open("r") as f:
@@ -68,7 +68,7 @@ def test_other_delimited_list(tmp_path: Path) -> None:
         fout.write("name\tvalues\n")
         fout.write("Tim\t1;2;3\n")
 
-    with MetricReader.open(FakeMetric, fpath_to_read) as reader:
+    with ModelReader.open(FakeMetric, fpath_to_read) as reader:
         metrics = list(reader)
 
     assert len(metrics) == 1
@@ -77,8 +77,8 @@ def test_other_delimited_list(tmp_path: Path) -> None:
 
     # Test writing
     fpath_to_write = tmp_path / "written.txt"
-    writer: MetricWriter[FakeMetric]
-    with MetricWriter.open(FakeMetric, fpath_to_write) as writer:
+    writer: ModelWriter[FakeMetric]
+    with ModelWriter.open(FakeMetric, fpath_to_write) as writer:
         writer.write(metrics[0])
 
     with fpath_to_write.open("r") as f:
@@ -97,8 +97,8 @@ def test_delimited_list_with_complex_types(tmp_path: Path) -> None:
 
     # Test writing
     fpath_to_write = tmp_path / "written.txt"
-    writer: MetricWriter[FakeMetric]
-    with MetricWriter.open(FakeMetric, fpath_to_write) as writer:
+    writer: ModelWriter[FakeMetric]
+    with ModelWriter.open(FakeMetric, fpath_to_write) as writer:
         writer.write(FakeMetric(name="Clint", values=[0.1, 0.002, 0.00301]))
 
     with fpath_to_write.open("r") as f:
@@ -125,7 +125,7 @@ def test_delimited_list_with_optional_field(tmp_path: Path) -> None:
         fout.write("Nils\t\n")
         fout.write("Tim\t1,2,3\n")
 
-    with MetricReader.open(FakeMetric, fpath_to_read) as reader:
+    with ModelReader.open(FakeMetric, fpath_to_read) as reader:
         metrics = list(reader)
 
     assert len(metrics) == 2
@@ -136,8 +136,8 @@ def test_delimited_list_with_optional_field(tmp_path: Path) -> None:
 
     # Test writing
     fpath_to_write = tmp_path / "written.txt"
-    writer: MetricWriter[FakeMetric]
-    with MetricWriter.open(FakeMetric, fpath_to_write) as writer:
+    writer: ModelWriter[FakeMetric]
+    with ModelWriter.open(FakeMetric, fpath_to_write) as writer:
         writer.writeall(metrics)
 
     with fpath_to_write.open("r") as f:
@@ -179,14 +179,14 @@ def test_list_field_round_trips_through_inferred_csv(tmp_path: Path) -> None:
 
     p = tmp_path / "metrics.csv"  # `.csv` infers a comma delimiter
     metric = FakeMetric(name="alice", tags=["x", "y", "z"])
-    with MetricWriter.open(FakeMetric, p) as writer:
+    with ModelWriter.open(FakeMetric, p) as writer:
         writer.write(metric)
 
     # The list serializes to "x,y,z", whose commas collide with the comma delimiter, so csv
     # quote-protects the field on disk rather than splitting it into extra columns.
     assert p.read_text() == 'name,tags\nalice,"x,y,z"\n'
 
-    with MetricReader.open(FakeMetric, p) as reader:
+    with ModelReader.open(FakeMetric, p) as reader:
         assert list(reader) == [metric]
 
 
@@ -208,7 +208,7 @@ def test_counter_pivot_table_of_enum(tmp_path: Path) -> None:
         fout.write("name\tfoo\tbar\n")
         fout.write("Nils\t1\t2\n")
 
-    with MetricReader.open(FakeMetric, fpath_to_read) as reader:
+    with ModelReader.open(FakeMetric, fpath_to_read) as reader:
         metrics = list(reader)
 
     assert len(metrics) == 1
@@ -219,8 +219,8 @@ def test_counter_pivot_table_of_enum(tmp_path: Path) -> None:
     # Test writing
     fpath_to_write = tmp_path / "written.txt"
 
-    writer: MetricWriter[FakeMetric]
-    with MetricWriter.open(FakeMetric, fpath_to_write) as writer:
+    writer: ModelWriter[FakeMetric]
+    with ModelWriter.open(FakeMetric, fpath_to_write) as writer:
         writer.write(FakeMetric(name="Tim", counts=Counter({FakeEnum.FOO: 3, FakeEnum.BAR: 4})))
 
     with fpath_to_write.open("r") as f:
@@ -245,13 +245,13 @@ def test_counter_pivot_table_roundtrip_with_absent_member(tmp_path: Path) -> Non
     # BAR is absent on construction; it must be written as 0, not as an empty cell. Otherwise the
     # header's "bar" column is left empty on disk and read-back fails parsing "" as an int.
     fpath = tmp_path / "test.txt"
-    writer: MetricWriter[FakeMetric]
-    with MetricWriter.open(FakeMetric, fpath) as writer:
+    writer: ModelWriter[FakeMetric]
+    with ModelWriter.open(FakeMetric, fpath) as writer:
         writer.write(FakeMetric(name="Nils", counts=Counter({FakeEnum.FOO: 5})))
 
     assert fpath.read_text() == "name\tfoo\tbar\nNils\t5\t0\n"
 
-    with MetricReader.open(FakeMetric, fpath) as reader:
+    with ModelReader.open(FakeMetric, fpath) as reader:
         metrics = list(reader)
 
     assert metrics == [
@@ -296,7 +296,7 @@ def test_counter_pivot_table_missing_enum_members_default_to_zero(tmp_path: Path
         fout.write("name\tfoo\n")
         fout.write("test\t5\n")
 
-    with MetricReader.open(FakeMetric, fpath) as reader:
+    with ModelReader.open(FakeMetric, fpath) as reader:
         metrics = list(reader)
 
     assert len(metrics) == 1

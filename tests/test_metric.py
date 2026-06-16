@@ -1,8 +1,8 @@
 """
 Tests for the `Metric.read` convenience classmethod.
 
-`Metric.read` is a thin wrapper over `MetricReader.open`; parsing behavior is covered in
-`test_metric_reader.py`. These tests cover only the wrapper contract: delegation of each
+`Metric.read` is a thin wrapper over `ModelReader.open`; parsing behavior is covered in
+`test_model_reader.py`. These tests cover only the wrapper contract: delegation of each
 keyword argument, accepted path types, and eager evaluation.
 """
 
