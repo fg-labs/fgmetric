@@ -214,6 +214,19 @@ class BaseCountMetric(Metric):
 # BaseCountMetric(position=1, counts=Counter({Base.A: 10, Base.C: 5, ...}))
 ```
 
+### Plain records (`RecordModel`)
+
+`Metric` is a batteries-included subclass of `RecordModel`, the mixin-free base. `RecordModel` does the default tabular parsing only — one model field per column — without the converter behaviors above (empty-string-to-`None`, delimited lists, counter pivots). Subclass it directly when you want plain field-per-column parsing and nothing else; `ModelReader`, `ModelWriter`, and the inherited `read()` work on any `RecordModel`.
+
+```python
+from fgmetric import RecordModel
+
+
+class SampleRecord(RecordModel):
+    name: str
+    note: str | None  # an empty cell stays "" here; on a Metric it would become None
+```
+
 ## Contributing
 
 See the [contributing guide](./CONTRIBUTING.md) for development setup and testing instructions.
