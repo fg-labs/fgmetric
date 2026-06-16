@@ -5,8 +5,7 @@ if TYPE_CHECKING:
     from duckdb import DuckDBPyConnection
 
 _MISSING_DUCKDB_MESSAGE = (
-    "DuckDB is required to read metrics from SQL. "
-    "Install it with: pip install 'fgmetric[duckdb]'"
+    "DuckDB is required to read metrics from SQL. Install it with: pip install 'fgmetric[duckdb]'"
 )
 
 
