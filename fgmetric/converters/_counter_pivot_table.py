@@ -4,7 +4,6 @@ from typing import ClassVar
 from typing import final
 from typing import get_args
 
-from pydantic import BaseModel
 from pydantic import SerializationInfo
 from pydantic import SerializerFunctionWrapHandler
 from pydantic import model_serializer
@@ -13,9 +12,14 @@ from pydantic.fields import FieldInfo
 
 from fgmetric._typing_extensions import is_counter
 from fgmetric._typing_extensions import is_optional
+from fgmetric.record_model import RecordModel
 
 
-class CounterPivotTable(BaseModel):
+# NB: This mixin inherits `RecordModel` rather than `BaseModel` (unlike the other converters) so
+# that it can override `RecordModel._header_fieldnames` and call `super()` to reuse the default
+# alias-aware header. It is the only converter that rewrites the on-disk column set, so it is the
+# only one that needs the base header contract in scope.
+class CounterPivotTable(RecordModel):
     """
     A mixin to support pivot table representations of Counters.
 
@@ -200,6 +204,42 @@ class CounterPivotTable(BaseModel):
             )
 
         return enum_cls
+
+    @final
+    @classmethod
+    def _header_fieldnames(cls) -> list[str]:
+        """
+        Return the header fieldnames with the Counter field pivoted into per-member columns.
+
+        Overrides `RecordModel._header_fieldnames` to match this mixin's wide serialization: the
+        single `Counter[T]` field has no on-disk column of its own, so it is dropped from the
+        default header and replaced by one column per enum member (in enum declaration order),
+        matching the output of `_pivot_counter_values`.
+
+        Returns:
+            The list of fieldnames to use as the header row.
+
+        Example:
+            Given a model with ``name: str`` and ``counts: Counter[Color]`` where
+            ``Color`` has members ``RED``, ``GREEN``, ``BLUE``:
+
+            ```python
+            cls._header_fieldnames()
+            # -> ["name", "red", "green", "blue"]
+            ```
+        """
+        # The Counter field has no alias (aliases are rejected for Counter fields), so its
+        # serialized name equals its field name; drop it from the default header.
+        fieldnames = [
+            name for name in super()._header_fieldnames() if name != cls._counter_fieldname
+        ]
+
+        if cls._counter_enum is None:
+            # Short circuit if we don't have a Counter field
+            return fieldnames
+
+        # Replace the dropped Counter field with one column per enum member
+        return fieldnames + [member.value for member in cls._counter_enum]
 
     @final
     @model_validator(mode="before")

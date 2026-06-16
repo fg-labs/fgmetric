@@ -79,7 +79,7 @@ for metric in AlignmentMetric.read(path):
 Define a class to represent each row:
 
 ```python
-from fgmetric import Metric, MetricReader, MetricWriter
+from fgmetric import Metric, ModelReader, ModelWriter
 
 
 class AlignmentMetric(Metric):
@@ -100,25 +100,25 @@ metrics = [
     AlignmentMetric(read_name="read1", mapping_quality=60),
     AlignmentMetric(read_name="read2", mapping_quality=30, is_duplicate=True),
 ]
-with MetricWriter.open(AlignmentMetric, "output.tsv") as writer:
+with ModelWriter.open(AlignmentMetric, "output.tsv") as writer:
     writer.writeall(metrics)
 ```
 
-`Metric.read()` reads the whole file into a list. To stream metrics one at a time without holding them all in memory, use `MetricReader.open()`:
+`Metric.read()` reads the whole file into a list. To stream metrics one at a time without holding them all in memory, use `ModelReader.open()`:
 
 ```python
 # Streaming from a path
-with MetricReader.open(AlignmentMetric, "alignments.tsv") as reader:
+with ModelReader.open(AlignmentMetric, "alignments.tsv") as reader:
     for metric in reader:
         print(f"{metric.read_name}: MQ={metric.mapping_quality}")
 ```
 
-To read from an open file handle or any other text IO source (e.g. `StringIO`), use `MetricReader` directly:
+To read from an open file handle or any other text IO source (e.g. `StringIO`), use `ModelReader` directly:
 
 ```python
 # Reading from an IO source
 with open("alignments.tsv") as handle:
-    reader = MetricReader(AlignmentMetric, handle)
+    reader = ModelReader(AlignmentMetric, handle)
     for metric in reader:
         print(f"{metric.read_name}: MQ={metric.mapping_quality}")
 ```
@@ -149,7 +149,7 @@ Pass `delimiter=` to override inference, or to read or write a file whose extens
 
 ```python
 # Pipe-delimited file with an unrecognized extension
-with MetricWriter.open(MyMetric, "output.dat", delimiter="|") as writer:
+with ModelWriter.open(MyMetric, "output.dat", delimiter="|") as writer:
     ...
 ```
 
@@ -161,7 +161,7 @@ Reading and writing transparently handle gzip, bzip2, and xz files based on the 
 for metric in AlignmentMetric.read("alignments.tsv.gz"):
     ...
 
-with MetricWriter.open(AlignmentMetric, "output.tsv.bz2") as writer:
+with ModelWriter.open(AlignmentMetric, "output.tsv.bz2") as writer:
     writer.writeall(metrics)
 ```
 
