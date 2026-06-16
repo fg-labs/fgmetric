@@ -1,6 +1,7 @@
 from typing import ClassVar
 
 import pytest
+from pydantic import AliasChoices
 from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import ValidationError
@@ -43,6 +44,18 @@ def test_aliased_optional_field_is_substituted() -> None:
     # Input is keyed by the alias, as a delimited-file row would be.
     result = Model.model_validate({"Value": ""})
     assert result.value is None
+
+
+def test_alias_choices_optional_field_is_substituted() -> None:
+    """An Optional field reachable via `AliasChoices` is substituted under any of its choices."""
+
+    class Model(NullSentinels):
+        null_sentinels: ClassVar[frozenset[str]] = frozenset({""})
+
+        value: int | None = Field(validation_alias=AliasChoices("v", "Value"))
+
+    assert Model.model_validate({"v": ""}).value is None
+    assert Model.model_validate({"Value": ""}).value is None
 
 
 def test_non_optional_fields_are_not_substituted() -> None:

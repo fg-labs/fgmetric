@@ -2,10 +2,32 @@ from typing import Any
 from typing import ClassVar
 from typing import final
 
+from pydantic import AliasChoices
 from pydantic import BaseModel
 from pydantic import model_validator
+from pydantic.fields import FieldInfo
 
 from fgmetric._typing_extensions import is_optional
+
+
+def _validation_keys(info: FieldInfo) -> set[str]:
+    """
+    Return the string keys an input field may be supplied under.
+
+    Covers the field's plain string `alias`/`validation_alias` and the string members of an
+    `AliasChoices`. `serialization_alias` is an output-only key, so it is excluded. `AliasPath`
+    aliases are path-shaped (for nested input) and do not apply to flat delimited rows, so they
+    are skipped.
+    """
+    keys: set[str] = set()
+    if isinstance(info.alias, str):
+        keys.add(info.alias)
+    validation_alias = info.validation_alias
+    if isinstance(validation_alias, str):
+        keys.add(validation_alias)
+    elif isinstance(validation_alias, AliasChoices):
+        keys.update(choice for choice in validation_alias.choices if isinstance(choice, str))
+    return keys
 
 
 # NB: Inheriting from BaseModel is necessary to declare model validators on the mixin, and for the
@@ -68,10 +90,7 @@ class NullSentinels(BaseModel):
             if not is_optional(info.annotation):
                 continue
             keys.add(name)
-            if isinstance(info.validation_alias, str):
-                keys.add(info.validation_alias)
-            if isinstance(info.alias, str):
-                keys.add(info.alias)
+            keys |= _validation_keys(info)
         cls._optional_field_keys = keys
 
     @final
