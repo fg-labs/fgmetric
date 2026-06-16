@@ -8,8 +8,8 @@ from pydantic import BaseModel
 from pydantic import model_validator
 
 from fgmetric._typing_extensions import is_optional
-from fgmetric.collections import CounterPivotTable
-from fgmetric.collections import DelimitedList
+from fgmetric.converters import CounterPivotTable
+from fgmetric.converters import DelimitedList
 from fgmetric.metric_reader import MetricReader
 
 
