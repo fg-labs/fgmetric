@@ -145,3 +145,17 @@ def test_from_sql_reads_parquet_file(tmp_path: Path) -> None:
         ExampleMetric(name="a", value=1),
         ExampleMetric(name="b", value=2),
     ]
+
+
+def test_metric_from_sql_returns_list() -> None:
+    metrics = ExampleMetric.from_sql("SELECT 'a' AS name, 1 AS value")
+    assert_type(metrics, list[ExampleMetric])
+    assert metrics == [ExampleMetric(name="a", value=1)]
+
+
+def test_metric_from_sql_passes_connection_through() -> None:
+    conn = duckdb.connect()
+    conn.execute("CREATE TABLE t AS SELECT 'a' AS name, 1 AS value")
+    metrics = ExampleMetric.from_sql("SELECT * FROM t", connection=conn)
+    assert metrics == [ExampleMetric(name="a", value=1)]
+    conn.close()

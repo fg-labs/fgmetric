@@ -1,6 +1,7 @@
 from abc import ABC
 from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 from typing import Any
 from typing import Self
 
@@ -11,6 +12,9 @@ from fgmetric._typing_extensions import is_optional
 from fgmetric.collections import CounterPivotTable
 from fgmetric.collections import DelimitedList
 from fgmetric.metric_reader import MetricReader
+
+if TYPE_CHECKING:
+    from duckdb import DuckDBPyConnection
 
 
 class Metric(
@@ -115,6 +119,47 @@ class Metric(
             encoding=encoding,
         ) as reader:
             return list(reader)
+
+    @classmethod
+    def from_sql(
+        cls,
+        query: str,
+        *,
+        connection: "DuckDBPyConnection | None" = None,
+    ) -> list[Self]:
+        """
+        Read all Metric instances from the rows of a DuckDB SQL query.
+
+        Eager wrapper around `MetricReader.from_sql()`: the query runs and every row is
+        validated and collected into a list before this method returns. This is to
+        `from_sql` what `read` is to `MetricReader.open` — use `MetricReader.from_sql`
+        directly to iterate without materializing the full list.
+
+        The query names its own source, so any backend DuckDB can read works (Parquet, Arrow,
+        JSON, CSV, SQLite, Postgres, S3). See `MetricReader.from_sql()` for the connection and
+        column-naming behavior shared by both APIs. Requires the optional `duckdb` dependency:
+        `pip install 'fgmetric[duckdb]'`.
+
+        Args:
+            query: A DuckDB SQL query whose output columns match this metric class's fields.
+            connection: An open DuckDB connection. When `None`, a transient in-memory
+                connection is opened and closed internally. A supplied connection is never
+                closed.
+
+        Returns:
+            A list of instances of the calling Metric subclass, one per result row.
+
+        Raises:
+            ImportError: If the optional `duckdb` dependency is not installed.
+            ValidationError: If a row fails `Metric` validation.
+
+        Example:
+            ```python
+            metrics = AlignmentMetric.from_sql("SELECT * FROM 'metrics.parquet'")
+            print(f"read {len(metrics)} rows")
+            ```
+        """
+        return list(MetricReader.from_sql(cls, query, connection=connection))
 
     # NB: "Before" validators (mode="before") run before field validators such as
     # `DelimitedList._split_lists()`. Empty strings in Optional fields will always be converted to
