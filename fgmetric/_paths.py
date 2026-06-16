@@ -37,7 +37,7 @@ def path_read_error(path: Path | str) -> OSError | None:
     return None
 
 
-def path_write_error(path: Path | str) -> OSError | None:
+def path_write_error(path: Path | str, overwrite: bool = True) -> OSError | None:
     """
     Return the error that would result from opening `path` for writing.
 
@@ -47,13 +47,20 @@ def path_write_error(path: Path | str) -> OSError | None:
     resolved first, so the checks apply where the write would actually land: a symlink to a
     nonexistent file is writable when the target's parent directory is.
 
+    When `overwrite` is `False`, an existing writable regular file is reported as an error rather
+    than silently clobbered. Only regular files are guarded: directories already report the more
+    specific `IsADirectoryError`, and non-regular files (FIFOs, devices such as `/dev/stdout`)
+    are not destroyed by a write, so they remain writable. A read-only existing file reports
+    `PermissionError` regardless of `overwrite`, since `overwrite=True` could not write it either.
+
     Args:
         path: Filesystem path to check.
+        overwrite: When `False`, refuse to clobber an existing regular file. Defaults to `True`.
 
     Returns:
         None if `path` is writable; otherwise an unraised exception whose type and message
         describe the problem (`FileNotFoundError`, `NotADirectoryError`, `IsADirectoryError`,
-        or `PermissionError`).
+        `PermissionError`, or `FileExistsError`).
     """
     path = Path(path)
 
@@ -71,6 +78,8 @@ def path_write_error(path: Path | str) -> OSError | None:
     if path.exists():
         if not os.access(path, os.W_OK):
             return PermissionError(f"File is not writable: {path}")
+        if not overwrite and path.is_file():
+            return FileExistsError(f"File already exists: {path}")
     elif not os.access(parent, os.W_OK | os.X_OK):
         return PermissionError(f"Parent directory is not writable: {parent}")
 

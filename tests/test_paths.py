@@ -159,3 +159,62 @@ def test_path_write_error_for_readonly_parent(
     error = path_write_error(d / "out.tsv")
     assert isinstance(error, PermissionError)
     assert "not writable" in str(error)
+
+
+def test_path_write_error_overwrite_false_for_existing_file(tmp_path: Path) -> None:
+    """With `overwrite=False`, an existing regular file yields FileExistsError."""
+    p = tmp_path / "out.tsv"
+    p.write_text("existing\n")
+    error = path_write_error(p, overwrite=False)
+    assert isinstance(error, FileExistsError)
+    assert "already exists" in str(error)
+
+
+def test_path_write_error_overwrite_false_allows_new_file(tmp_path: Path) -> None:
+    """With `overwrite=False`, a nonexistent file in a writable directory yields no error."""
+    assert path_write_error(tmp_path / "out.tsv", overwrite=False) is None
+
+
+def test_path_write_error_overwrite_false_for_symlink_to_existing_file(tmp_path: Path) -> None:
+    """With `overwrite=False`, a symlink resolving to an existing file yields FileExistsError."""
+    target = tmp_path / "target.tsv"
+    target.write_text("existing\n")
+    link = tmp_path / "link.tsv"
+    link.symlink_to(target)
+    error = path_write_error(link, overwrite=False)
+    assert isinstance(error, FileExistsError)
+    assert "already exists" in str(error)
+
+
+def test_path_write_error_overwrite_false_allows_broken_symlink(tmp_path: Path) -> None:
+    """With `overwrite=False`, a symlink to a nonexistent target is not a clobber and is allowed."""
+    link = tmp_path / "link.tsv"
+    link.symlink_to(tmp_path / "target.tsv")
+    # Writing through the link creates the target, so there is nothing to overwrite.
+    assert path_write_error(link, overwrite=False) is None
+
+
+def test_path_write_error_overwrite_false_allows_fifo(tmp_path: Path) -> None:
+    """With `overwrite=False`, a non-regular file such as a FIFO is not a clobber and is allowed."""
+    p = tmp_path / "fifo"
+    os.mkfifo(p)
+    assert path_write_error(p, overwrite=False) is None
+
+
+def test_path_write_error_overwrite_false_for_directory(tmp_path: Path) -> None:
+    """With `overwrite=False`, a directory still yields the more specific IsADirectoryError."""
+    error = path_write_error(tmp_path, overwrite=False)
+    assert isinstance(error, IsADirectoryError)
+    assert "is a directory" in str(error)
+
+
+def test_path_write_error_overwrite_false_for_readonly_file(
+    tmp_path: Path, chmod: Callable[[Path, int], None]
+) -> None:
+    """With `overwrite=False`, a read-only existing file still yields PermissionError first."""
+    p = tmp_path / "out.tsv"
+    p.write_text("locked\n")
+    chmod(p, 0o444)
+    error = path_write_error(p, overwrite=False)
+    assert isinstance(error, PermissionError)
+    assert "not writable" in str(error)
