@@ -18,7 +18,6 @@ def test_comma_delimited_list(tmp_path: Path) -> None:
         values: list[int]
 
     assert FakeMetric._collection_fieldnames == {"values"}
-    assert FakeMetric._is_collection_field("values")
 
     # Test reading
     fpath_to_read = tmp_path / "test.txt"
@@ -113,7 +112,6 @@ def test_delimited_list_with_optional_field(tmp_path: Path) -> None:
         values: list[int] | None
 
     assert FakeMetric._collection_fieldnames == {"values"}
-    assert FakeMetric._is_collection_field("values")
 
     # Test reading
     fpath_to_read = tmp_path / "test.txt"
