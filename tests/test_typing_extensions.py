@@ -9,6 +9,7 @@ from fgmetric._typing_extensions import has_optional_elements
 from fgmetric._typing_extensions import has_origin
 from fgmetric._typing_extensions import is_collection
 from fgmetric._typing_extensions import is_list
+from fgmetric._typing_extensions import is_mapping
 from fgmetric._typing_extensions import is_optional
 from fgmetric._typing_extensions import unpack_optional
 
@@ -109,6 +110,35 @@ def test_is_collection(annotation: TypeAnnotation) -> None:
 def test_is_not_collection(annotation: TypeAnnotation) -> None:
     """Should reject mappings, bare collections, and non-collection types."""
     assert not is_collection(annotation)
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        dict[str, int],
+        dict[int, float],
+        Optional[dict[str, int]],
+        dict[str, int] | None,
+    ],
+)
+def test_is_mapping(annotation: TypeAnnotation) -> None:
+    """Should identify dict types, even within an Optional."""
+    assert is_mapping(annotation)
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        str,
+        list[int],
+        set[str],
+        Counter[str],
+        dict,
+    ],
+)
+def test_is_not_mapping(annotation: TypeAnnotation) -> None:
+    """Should reject Counters, bare dict, and non-dict types."""
+    assert not is_mapping(annotation)
 
 
 @pytest.mark.parametrize(

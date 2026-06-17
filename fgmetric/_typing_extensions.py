@@ -205,6 +205,27 @@ def is_collection(annotation: TypeAnnotation | None) -> bool:
     return any(has_origin(annotation, origin) for origin in (list, set, frozenset, tuple))
 
 
+def is_mapping(annotation: TypeAnnotation | None) -> bool:
+    """
+    Check if a type annotation is a `dict` type.
+
+    Matches parameterized `dict[K, V]`, including its optional form. `Counter` is a `dict`
+    subclass but has a distinct origin, so it is not a mapping for this purpose (it is handled
+    separately, see `is_counter`).
+
+    Examples:
+        >>> is_mapping(dict[str, int])
+        True
+        >>> is_mapping(dict[str, int] | None)
+        True
+        >>> is_mapping(Counter[str])
+        False
+        >>> is_mapping(dict)  # bare dict, no type parameters
+        False
+    """
+    return has_origin(annotation, dict)
+
+
 def is_counter(annotation: TypeAnnotation | None) -> bool:
     """
     True if the type annotation is a Counter.
