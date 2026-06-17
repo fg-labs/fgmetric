@@ -6,6 +6,7 @@ import pytest
 from fgmetric._typing_extensions import TypeAnnotation
 from fgmetric._typing_extensions import has_optional_elements
 from fgmetric._typing_extensions import has_origin
+from fgmetric._typing_extensions import is_bool
 from fgmetric._typing_extensions import is_list
 from fgmetric._typing_extensions import is_optional
 from fgmetric._typing_extensions import unpack_optional
@@ -75,6 +76,35 @@ def test_is_list(annotation: TypeAnnotation) -> None:
 def test_is_not_list(annotation: TypeAnnotation) -> None:
     """Should reject non-list types."""
     assert not is_list(annotation)
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        bool,
+        Optional[bool],
+        bool | None,
+    ],
+)
+def test_is_bool(annotation: TypeAnnotation) -> None:
+    """Should identify `bool`, even within an Optional."""
+    assert is_bool(annotation)
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        int,  # `bool` is a subclass of `int`, but `int` is not `bool`
+        int | None,
+        str,
+        bool | str,  # mixed union is not a pure bool field
+        list[bool],
+        bool | str | None,
+    ],
+)
+def test_is_not_bool(annotation: TypeAnnotation) -> None:
+    """Should reject types that are not exactly `bool` or `bool | None`."""
+    assert not is_bool(annotation)
 
 
 @pytest.mark.parametrize(

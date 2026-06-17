@@ -6,6 +6,7 @@ from typing import Self
 
 from pydantic import BaseModel
 
+from fgmetric.converters import BoolTokens
 from fgmetric.converters import CounterPivotTable
 from fgmetric.converters import DelimitedList
 from fgmetric.converters import NullSentinels
@@ -14,6 +15,7 @@ from fgmetric.metric_reader import MetricReader
 
 class Metric(
     DelimitedList,
+    BoolTokens,
     CounterPivotTable,
     NullSentinels,
     BaseModel,
@@ -38,12 +40,20 @@ class Metric(
     2. **Delimited lists.** Any field typed as `list[T]` will be parsed from and serialized to a
        delimited string. The list delimiter may be controlled by the `collection_delimiter` class
        variable.
+    3. **Boolean tokens.** Fields typed as `bool` (or `bool | None`) are parsed from a narrow,
+       case-insensitive token set (`true`/`t`/`1`, `false`/`f`/`0`), rejecting anything else
+       rather than applying Pydantic's broader coercion. The accepted tokens may be overridden by
+       the `true_tokens`/`false_tokens` class variables.
 
     Class Variables:
         collection_delimiter: A single-character delimiter used to split and join `list` fields
             during serialization/deserialization.
         null_sentinels: The set of input strings that should be treated as `None` on Optional
             fields during validation. Defaults to `frozenset({""})`.
+        true_tokens: The set of input strings parsed as `True` on `bool` fields during validation.
+            Defaults to `frozenset({"true", "t", "1"})`.
+        false_tokens: The set of input strings parsed as `False` on `bool` fields during
+            validation. Defaults to `frozenset({"false", "f", "0"})`.
 
     Example:
         ```python

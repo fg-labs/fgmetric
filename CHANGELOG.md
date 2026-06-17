@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Add an `encoding` kwarg on `MetricReader.open` and `MetricWriter.open` (#43)
 - Transparent gzip/bz2/xz support via `xopen` (#44)
 - Infer the delimiter from the file extension in `MetricReader.open`/`MetricWriter.open`; pass `delimiter=` to override (#61)
+- Restrict boolean parsing on `Metric` to a narrow, configurable token set (the `BoolTokens` converter), defaulting to fgpyo's `{true, t, 1}`/`{false, f, 0}` and rejecting anything else (#75)
 
 ### Changed
 

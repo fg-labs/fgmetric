@@ -178,6 +178,35 @@ def is_list(annotation: TypeAnnotation | None) -> bool:
     return has_origin(annotation, list)
 
 
+def is_bool(annotation: TypeAnnotation | None) -> bool:
+    """
+    Check if a type annotation is `bool` or an Optional `bool`.
+
+    Matches `bool`, `Optional[bool]`, and `bool | None`. Although `bool` is a subclass of `int`,
+    `int` is not matched. A union pairing `bool` with another non-None type (e.g. `bool | str`) is
+    not matched either, since it is not a pure boolean field.
+
+    Examples:
+        >>> is_bool(bool)
+        True
+        >>> is_bool(bool | None)
+        True
+        >>> is_bool(int)
+        False
+        >>> is_bool(bool | str)
+        False
+        >>> is_bool(list[bool])
+        False
+    """
+    if annotation is None:
+        return False
+
+    if is_optional(annotation):
+        annotation = unpack_optional(annotation)
+
+    return annotation is bool
+
+
 def is_counter(annotation: TypeAnnotation | None) -> bool:
     """
     True if the type annotation is a Counter.
