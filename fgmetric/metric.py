@@ -8,12 +8,14 @@ from pydantic import BaseModel
 
 from fgmetric.converters import CounterPivotTable
 from fgmetric.converters import DelimitedCollection
+from fgmetric.converters import DelimitedMapping
 from fgmetric.converters import NullSentinels
 from fgmetric.metric_reader import MetricReader
 
 
 class Metric(
     DelimitedCollection,
+    DelimitedMapping,
     CounterPivotTable,
     NullSentinels,
     BaseModel,
@@ -38,10 +40,15 @@ class Metric(
     2. **Delimited collections.** Any field typed as `list[T]`, `set[T]`, `frozenset[T]`, or
        `tuple[...]` will be parsed from and serialized to a delimited string. The delimiter may be
        controlled by the `collection_delimiter` class variable.
+    3. **Delimited mappings.** Any field typed as `dict[K, V]` will be parsed from and serialized
+       to a delimited string of `key=value` pairs. The pair delimiter is `collection_delimiter`;
+       the key/value delimiter may be controlled by the `key_value_delimiter` class variable.
 
     Class Variables:
         collection_delimiter: A single-character delimiter used to split and join collection fields
-            during serialization/deserialization.
+            (and the pairs of mapping fields) during serialization/deserialization.
+        key_value_delimiter: A single-character delimiter used to split and join the keys and
+            values of mapping fields. Must differ from `collection_delimiter`. Defaults to `"="`.
         null_sentinels: The set of input strings that should be treated as `None` on Optional
             fields during validation. Defaults to `frozenset({""})`.
 
