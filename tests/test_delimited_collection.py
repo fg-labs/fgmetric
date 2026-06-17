@@ -7,6 +7,7 @@ from pydantic import PlainSerializer
 from fgmetric import Metric
 from fgmetric import MetricReader
 from fgmetric import MetricWriter
+from fgmetric.converters import DelimitedCollection
 
 
 def test_comma_delimited_list(tmp_path: Path) -> None:
@@ -16,8 +17,8 @@ def test_comma_delimited_list(tmp_path: Path) -> None:
         name: str
         values: list[int]
 
-    assert FakeMetric._list_fieldnames == {"values"}
-    assert FakeMetric._is_list_field("values")
+    assert FakeMetric._collection_fieldnames == {"values"}
+    assert FakeMetric._is_collection_field("values")
 
     # Test reading
     fpath_to_read = tmp_path / "test.txt"
@@ -111,8 +112,8 @@ def test_delimited_list_with_optional_field(tmp_path: Path) -> None:
         name: str
         values: list[int] | None
 
-    assert FakeMetric._list_fieldnames == {"values"}
-    assert FakeMetric._is_list_field("values")
+    assert FakeMetric._collection_fieldnames == {"values"}
+    assert FakeMetric._is_collection_field("values")
 
     # Test reading
     fpath_to_read = tmp_path / "test.txt"
@@ -184,3 +185,125 @@ def test_list_field_round_trips_through_inferred_csv(tmp_path: Path) -> None:
 
     with MetricReader.open(FakeMetric, p) as reader:
         assert list(reader) == [metric]
+
+
+def test_metric_is_built_on_delimited_collection() -> None:
+    """`DelimitedCollection` is the canonical mixin; `Metric` is built on it."""
+
+    class FakeMetric(Metric):
+        values: list[int]
+
+    assert issubclass(Metric, DelimitedCollection)
+    assert issubclass(FakeMetric, DelimitedCollection)
+
+
+def test_set_field_roundtrip() -> None:
+    """A set[T] field parses from and serializes to a delimited string."""
+
+    class FakeMetric(Metric):
+        values: set[int]
+
+    assert FakeMetric._collection_fieldnames == {"values"}
+
+    m = FakeMetric.model_validate({"values": "3,1,2"})
+    assert m.values == {1, 2, 3}
+
+    # Sets have no order, so output is sorted by serialized form for a stable roundtrip.
+    assert m.model_dump()["values"] == "1,2,3"
+
+
+def test_set_output_is_sorted_stably() -> None:
+    """Set serialization is stable: sorted by serialized element form regardless of insertion."""
+
+    class FakeMetric(Metric):
+        values: set[str]
+
+    assert FakeMetric(values={"banana", "apple", "cherry"}).model_dump()["values"] == (
+        "apple,banana,cherry"
+    )
+
+
+def test_empty_set_field() -> None:
+    """An empty cell parses to an empty set and serializes back to an empty cell."""
+
+    class FakeMetric(Metric):
+        values: set[int]
+
+    m = FakeMetric.model_validate({"values": ""})
+    assert m.values == set()
+    assert m.model_dump()["values"] == ""
+
+
+def test_frozenset_field_roundtrip() -> None:
+    """A frozenset[T] field parses from and serializes to a sorted delimited string."""
+
+    class FakeMetric(Metric):
+        values: frozenset[int]
+
+    assert FakeMetric._collection_fieldnames == {"values"}
+
+    m = FakeMetric.model_validate({"values": "3,1,2"})
+    assert m.values == frozenset({1, 2, 3})
+    assert m.model_dump()["values"] == "1,2,3"
+
+
+def test_homogeneous_tuple_field_roundtrip() -> None:
+    """A variadic tuple[T, ...] field parses and serializes preserving order."""
+
+    class FakeMetric(Metric):
+        values: tuple[int, ...]
+
+    assert FakeMetric._collection_fieldnames == {"values"}
+
+    m = FakeMetric.model_validate({"values": "3,1,2"})
+    assert m.values == (3, 1, 2)
+    # Tuples are ordered, so order is preserved (not sorted).
+    assert m.model_dump()["values"] == "3,1,2"
+
+
+def test_heterogeneous_tuple_field_roundtrip() -> None:
+    """A fixed-arity tuple[int, str] field validates arity and per-position types."""
+
+    class FakeMetric(Metric):
+        values: tuple[int, str]
+
+    m = FakeMetric.model_validate({"values": "1,foo"})
+    assert m.values == (1, "foo")
+    assert m.model_dump()["values"] == "1,foo"
+
+
+def test_heterogeneous_tuple_arity_is_validated() -> None:
+    """A fixed-arity tuple rejects the wrong number of elements."""
+
+    class FakeMetric(Metric):
+        values: tuple[int, str]
+
+    with pytest.raises(ValueError):
+        FakeMetric.model_validate({"values": "1,foo,extra"})
+
+
+def test_set_with_optional_elements() -> None:
+    """A set[T | None] field maps empty elements to None."""
+
+    class FakeMetric(Metric):
+        values: set[int | None]
+
+    m = FakeMetric.model_validate({"values": "1,,3"})
+    assert m.values == {1, None, 3}
+    # Sorted by serialized form: "" (None) sorts before "1" and "3".
+    assert m.model_dump()["values"] == ",1,3"
+
+
+def test_tuple_with_optional_position() -> None:
+    """A fixed tuple maps an empty element to None only at optional positions."""
+
+    class FakeMetric(Metric):
+        values: tuple[str, int | None]
+
+    # Position 0 (str) keeps the empty string; position 1 (int | None) becomes None.
+    m = FakeMetric.model_validate({"values": ",5"})
+    assert m.values == ("", 5)
+
+    m2 = FakeMetric.model_validate({"values": "name,"})
+    assert m2.values == ("name", None)
+    assert m2.model_dump()["values"] == "name,"

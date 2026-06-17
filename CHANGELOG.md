@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 - `MetricWriter` is IO-first; open a path with `MetricWriter.open()` rather than passing it to the constructor (#42)
 - `Metric.read` is now a thin wrapper over `MetricReader.open` and reads eagerly, returning a `list` instead of a lazy generator; it accepts `str` paths in addition to `Path` and gains transparent decompression and the `encoding` kwarg. Use `MetricReader.open` to stream metrics without holding them all in memory (#62)
 - `MetricReader.open` and `MetricWriter.open` eagerly validate that the path is readable/writable on context entry (#66)
-- Rename the `DelimitedList` converter to `DelimitedCollection` (#76)
+- Generalize the `DelimitedList` converter to `DelimitedCollection`, which now also handles `set`, `frozenset`, and `tuple` (including heterogeneous tuples such as `tuple[int, str]`) in addition to `list`. Set and frozenset output is sorted by serialized form for stable roundtrips (#76)
 
 ## [0.3.0] - 2026-05-12
 

@@ -35,12 +35,12 @@ class Metric(
     1. **Null sentinels.** Empty strings in Optional fields are converted to `None` before field
        validation. The sentinel values converted to `None` can be overridden by the
        `null_sentinels` class variable.
-    2. **Delimited lists.** Any field typed as `list[T]` will be parsed from and serialized to a
-       delimited string. The list delimiter may be controlled by the `collection_delimiter` class
-       variable.
+    2. **Delimited collections.** Any field typed as `list[T]`, `set[T]`, `frozenset[T]`, or
+       `tuple[...]` will be parsed from and serialized to a delimited string. The delimiter may be
+       controlled by the `collection_delimiter` class variable.
 
     Class Variables:
-        collection_delimiter: A single-character delimiter used to split and join `list` fields
+        collection_delimiter: A single-character delimiter used to split and join collection fields
             during serialization/deserialization.
         null_sentinels: The set of input strings that should be treated as `None` on Optional
             fields during validation. Defaults to `frozenset({""})`.
