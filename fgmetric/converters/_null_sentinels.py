@@ -42,8 +42,8 @@ class NullSentinels(BaseModel):
     validators run.
 
     The substitution is scoped to Optional fields. Non-Optional fields are not touched, which
-    keeps this mixin composable with field-specific handling (e.g., `DelimitedList`'s treatment
-    of `list[T]` fields).
+    keeps this mixin composable with field-specific handling (e.g., `DelimitedCollection`'s
+    treatment of `list[T]` fields).
 
     Class Variables:
         null_sentinels: The set of input strings that should be treated as null on Optional

@@ -178,6 +178,54 @@ def is_list(annotation: TypeAnnotation | None) -> bool:
     return has_origin(annotation, list)
 
 
+def is_collection(annotation: TypeAnnotation | None) -> bool:
+    """
+    Check if a type annotation is a delimited-collection type.
+
+    Matches parameterized `list`, `set`, `frozenset`, and `tuple` (including the optional and
+    higher-arity tuple forms). Mappings (`dict`, `Counter`) and bare, unparameterized collections
+    are not collections for this purpose.
+
+    Examples:
+        >>> is_collection(list[int])
+        True
+        >>> is_collection(set[str])
+        True
+        >>> is_collection(frozenset[int])
+        True
+        >>> is_collection(tuple[int, str])
+        True
+        >>> is_collection(tuple[int, ...] | None)
+        True
+        >>> is_collection(dict[str, int])
+        False
+        >>> is_collection(list)  # bare list, no type parameter
+        False
+    """
+    return any(has_origin(annotation, origin) for origin in (list, set, frozenset, tuple))
+
+
+def is_mapping(annotation: TypeAnnotation | None) -> bool:
+    """
+    Check if a type annotation is a `dict` type.
+
+    Matches parameterized `dict[K, V]`, including its optional form. `Counter` is a `dict`
+    subclass but has a distinct origin, so it is not a mapping for this purpose (it is handled
+    separately, see `is_counter`).
+
+    Examples:
+        >>> is_mapping(dict[str, int])
+        True
+        >>> is_mapping(dict[str, int] | None)
+        True
+        >>> is_mapping(Counter[str])
+        False
+        >>> is_mapping(dict)  # bare dict, no type parameters
+        False
+    """
+    return has_origin(annotation, dict)
+
+
 def is_counter(annotation: TypeAnnotation | None) -> bool:
     """
     True if the type annotation is a Counter.

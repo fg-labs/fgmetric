@@ -1,3 +1,4 @@
+from collections import Counter
 from typing import Optional
 from typing import Union
 
@@ -6,7 +7,9 @@ import pytest
 from fgmetric._typing_extensions import TypeAnnotation
 from fgmetric._typing_extensions import has_optional_elements
 from fgmetric._typing_extensions import has_origin
+from fgmetric._typing_extensions import is_collection
 from fgmetric._typing_extensions import is_list
+from fgmetric._typing_extensions import is_mapping
 from fgmetric._typing_extensions import is_optional
 from fgmetric._typing_extensions import unpack_optional
 
@@ -75,6 +78,67 @@ def test_is_list(annotation: TypeAnnotation) -> None:
 def test_is_not_list(annotation: TypeAnnotation) -> None:
     """Should reject non-list types."""
     assert not is_list(annotation)
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        list[int],
+        set[str],
+        frozenset[int],
+        tuple[int, ...],
+        tuple[int, str],
+        Optional[list[int]],
+        set[str] | None,
+    ],
+)
+def test_is_collection(annotation: TypeAnnotation) -> None:
+    """Should identify list/set/frozenset/tuple types, even within an Optional."""
+    assert is_collection(annotation)
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        str,
+        str | None,
+        dict[str, int],
+        Counter[str],
+        list,
+    ],
+)
+def test_is_not_collection(annotation: TypeAnnotation) -> None:
+    """Should reject mappings, bare collections, and non-collection types."""
+    assert not is_collection(annotation)
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        dict[str, int],
+        dict[int, float],
+        Optional[dict[str, int]],
+        dict[str, int] | None,
+    ],
+)
+def test_is_mapping(annotation: TypeAnnotation) -> None:
+    """Should identify dict types, even within an Optional."""
+    assert is_mapping(annotation)
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        str,
+        list[int],
+        set[str],
+        Counter[str],
+        dict,
+    ],
+)
+def test_is_not_mapping(annotation: TypeAnnotation) -> None:
+    """Should reject Counters, bare dict, and non-dict types."""
+    assert not is_mapping(annotation)
 
 
 @pytest.mark.parametrize(
