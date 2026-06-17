@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from fgmetric.converters._delimited import _DelimitedConverter
 
 
@@ -93,3 +95,5 @@ class DelimitedCollection(_DelimitedConverter):
         MyMetric(tags=[1, None, 3]).model_dump()  # -> {"tags": "1,,3"}
         ```
     """
+
+    _handles_collections: ClassVar[bool] = True

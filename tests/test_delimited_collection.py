@@ -2,7 +2,9 @@ from pathlib import Path
 from typing import Annotated
 
 import pytest
+from pydantic import BaseModel
 from pydantic import PlainSerializer
+from pydantic import ValidationError
 
 from fgmetric import Metric
 from fgmetric import MetricReader
@@ -193,6 +195,24 @@ def test_metric_is_built_on_delimited_collection() -> None:
 
     assert issubclass(Metric, DelimitedCollection)
     assert issubclass(FakeMetric, DelimitedCollection)
+
+
+def test_collection_handling_is_opt_in() -> None:
+    """A model mixing in only `DelimitedCollection` handles collections but not mappings."""
+
+    class CollectionOnly(DelimitedCollection, BaseModel):
+        tags: list[int]
+        counts: dict[str, int]
+
+    assert CollectionOnly._handles_collections
+    assert not CollectionOnly._handles_mappings
+
+    # The list field is split from a string; the dict field is left for Pydantic to handle, so a
+    # delimited string is not accepted as a dict.
+    m = CollectionOnly.model_validate({"tags": "1,2", "counts": {"a": 1}})
+    assert m.tags == [1, 2]
+    with pytest.raises(ValidationError):
+        CollectionOnly.model_validate({"tags": "1,2", "counts": "a=1"})
 
 
 def test_set_field_roundtrip() -> None:
