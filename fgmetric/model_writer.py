@@ -10,12 +10,12 @@ from xopen import xopen
 
 from fgmetric._delimiter import infer_delimiter
 from fgmetric._paths import path_write_error
-from fgmetric.metric import Metric
+from fgmetric.record_model import RecordModel
 
 
-class MetricWriter[T: Metric]:
+class ModelWriter[T: RecordModel]:
     """
-    Write `Metric` instances to a text IO sink.
+    Write `RecordModel` instances to a text IO sink.
 
     Construction takes a writable text IO and writes the header row immediately.
     The writer does not own the sink; callers manage its lifecycle. Use the
@@ -23,29 +23,29 @@ class MetricWriter[T: Metric]:
     construction, `open` owns the file it opens and closes it on context exit.
     """
 
-    _metric_class: type[T]
+    _model_class: type[T]
     _writer: DictWriter[str]
 
     def __init__(
         self,
-        metric_class: type[T],
+        model_class: type[T],
         sink: TextIO,
         delimiter: str = "\t",
         lineterminator: str = "\n",
     ) -> None:
         """
-        Initialize a new `MetricWriter` and write the header row to `sink`.
+        Initialize a new `ModelWriter` and write the header row to `sink`.
 
         Args:
-            metric_class: Metric class.
+            model_class: The `RecordModel` subclass whose instances will be written.
             sink: Writable text IO (e.g., file handle, StringIO) to write to.
             delimiter: The output file delimiter.
             lineterminator: The string used to terminate lines.
         """
-        self._metric_class = metric_class
+        self._model_class = model_class
         self._writer = DictWriter(
             f=sink,
-            fieldnames=metric_class._header_fieldnames(),
+            fieldnames=model_class._header_fieldnames(),
             delimiter=delimiter,
             lineterminator=lineterminator,
         )
@@ -55,17 +55,17 @@ class MetricWriter[T: Metric]:
     @contextmanager
     def open(
         cls,
-        metric_class: type[T],
+        model_class: type[T],
         path: Path | str,
         delimiter: str | None = None,
         lineterminator: str = "\n",
         encoding: str = "utf-8",
     ) -> Iterator[Self]:
         """
-        Open `path` for writing and yield a `MetricWriter` over it.
+        Open `path` for writing and yield a `ModelWriter` over it.
 
         This is a context manager: bind it in a `with` statement and write through the writer
-        it yields. `writer = MetricWriter.open(...)` without `with` binds the context manager
+        it yields. `writer = ModelWriter.open(...)` without `with` binds the context manager
         itself, not a writer.
 
         Compression is selected automatically based on the output file extension: plaintext, gzip
@@ -74,7 +74,7 @@ class MetricWriter[T: Metric]:
         The header is written on context entry; the file is closed on context exit.
 
         Args:
-            metric_class: Metric class.
+            model_class: The `RecordModel` subclass whose instances will be written.
             path: Filesystem path to the output file.
             delimiter: The output file delimiter. When `None` (the default), the delimiter is
                 inferred from the file extension: `.csv` → comma; `.tsv`, `.txt`, `.tab`, or
@@ -84,7 +84,7 @@ class MetricWriter[T: Metric]:
             encoding: The text encoding used to write the file.
 
         Yields:
-            A `MetricWriter` over the opened file.
+            A `ModelWriter` over the opened file.
 
         Raises:
             FileNotFoundError: If the parent directory of `path` does not exist.
@@ -97,7 +97,7 @@ class MetricWriter[T: Metric]:
 
         Example:
             ```python
-            with MetricWriter.open(AlignmentMetric, "metrics.txt") as writer:
+            with ModelWriter.open(AlignmentMetric, "metrics.txt") as writer:
                 writer.writeall(metrics)
             ```
         """
@@ -106,23 +106,23 @@ class MetricWriter[T: Metric]:
         if delimiter is None:
             delimiter = infer_delimiter(path)
         with xopen(path, mode="wt", encoding=encoding) as handle:
-            yield cls(metric_class, handle, delimiter, lineterminator)
+            yield cls(model_class, handle, delimiter, lineterminator)
 
-    def write(self, metric: T) -> None:
+    def write(self, model: T) -> None:
         """
-        Write a single `Metric` instance.
-
-        Args:
-            metric: An instance of the writer's metric class.
-        """
-        self._writer.writerow(metric.model_dump(mode="json", by_alias=True))
-
-    def writeall(self, metrics: Iterable[T]) -> None:
-        """
-        Write multiple `Metric` instances.
+        Write a single `RecordModel` instance.
 
         Args:
-            metrics: An iterable of instances of the writer's metric class.
+            model: An instance of the writer's model class.
         """
-        for metric in metrics:
-            self.write(metric)
+        self._writer.writerow(model.model_dump(mode="json", by_alias=True))
+
+    def writeall(self, models: Iterable[T]) -> None:
+        """
+        Write multiple `RecordModel` instances.
+
+        Args:
+            models: An iterable of instances of the writer's model class.
+        """
+        for model in models:
+            self.write(model)
