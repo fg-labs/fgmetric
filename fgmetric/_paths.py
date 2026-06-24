@@ -37,7 +37,7 @@ def path_read_error(path: Path | str) -> OSError | None:
     return None
 
 
-def path_write_error(path: Path | str, overwrite: bool = True) -> OSError | None:
+def path_write_error(path: Path | str, *, overwrite: bool) -> OSError | None:
     """
     Return the error that would result from opening `path` for writing.
 
@@ -55,7 +55,7 @@ def path_write_error(path: Path | str, overwrite: bool = True) -> OSError | None
 
     Args:
         path: Filesystem path to check.
-        overwrite: When `False`, refuse to clobber an existing regular file. Defaults to `True`.
+        overwrite: When `False`, refuse to clobber an existing regular file.
 
     Returns:
         None if `path` is writable; otherwise an unraised exception whose type and message

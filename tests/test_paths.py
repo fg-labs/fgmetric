@@ -2,6 +2,8 @@ import os
 from collections.abc import Callable
 from pathlib import Path
 
+import pytest
+
 from fgmetric._paths import path_read_error
 from fgmetric._paths import path_write_error
 
@@ -73,28 +75,28 @@ def test_path_read_error_without_read_permission(
 # ======================================================================================
 
 
-def test_path_write_error_returns_none_for_writable_file(tmp_path: Path) -> None:
-    """An existing file with write permission yields no error."""
+def test_path_write_error_overwrite_true_for_existing_file(tmp_path: Path) -> None:
+    """With `overwrite=True`, an existing writable file yields no error."""
     p = tmp_path / "out.tsv"
     p.write_text("existing\n")
-    assert path_write_error(p) is None
+    assert path_write_error(p, overwrite=True) is None
 
 
 def test_path_write_error_accepts_str(tmp_path: Path) -> None:
     """A path given as a str is accepted."""
-    assert path_write_error(str(tmp_path / "out.tsv")) is None
+    assert path_write_error(str(tmp_path / "out.tsv"), overwrite=False) is None
 
 
 def test_path_write_error_returns_none_for_new_file_in_writable_directory(
     tmp_path: Path,
 ) -> None:
     """A nonexistent file in a writable directory yields no error."""
-    assert path_write_error(tmp_path / "out.tsv") is None
+    assert path_write_error(tmp_path / "out.tsv", overwrite=False) is None
 
 
 def test_path_write_error_for_missing_parent(tmp_path: Path) -> None:
     """A nonexistent file in a nonexistent directory yields FileNotFoundError."""
-    error = path_write_error(tmp_path / "missing" / "out.tsv")
+    error = path_write_error(tmp_path / "missing" / "out.tsv", overwrite=False)
     assert isinstance(error, FileNotFoundError)
     assert "does not exist" in str(error)
 
@@ -103,7 +105,7 @@ def test_path_write_error_for_parent_that_is_a_file(tmp_path: Path) -> None:
     """A path whose parent exists but is a file yields NotADirectoryError."""
     p = tmp_path / "afile.txt"
     p.write_text("x\n")
-    error = path_write_error(p / "out.tsv")
+    error = path_write_error(p / "out.tsv", overwrite=False)
     assert isinstance(error, NotADirectoryError)
     assert "not a directory" in str(error)
 
@@ -118,35 +120,16 @@ def test_path_write_error_returns_none_for_symlink_to_new_file_in_writable_direc
     """
     link = tmp_path / "link.tsv"
     link.symlink_to(tmp_path / "target.tsv")
-    assert path_write_error(link) is None
+    assert path_write_error(link, overwrite=False) is None
 
 
 def test_path_write_error_for_symlink_into_missing_directory(tmp_path: Path) -> None:
     """A symlink whose target's parent directory does not exist yields FileNotFoundError."""
     link = tmp_path / "link.tsv"
     link.symlink_to(tmp_path / "missing" / "target.tsv")
-    error = path_write_error(link)
+    error = path_write_error(link, overwrite=False)
     assert isinstance(error, FileNotFoundError)
     assert "does not exist" in str(error)
-
-
-def test_path_write_error_for_directory(tmp_path: Path) -> None:
-    """A directory yields IsADirectoryError."""
-    error = path_write_error(tmp_path)
-    assert isinstance(error, IsADirectoryError)
-    assert "is a directory" in str(error)
-
-
-def test_path_write_error_for_readonly_file(
-    tmp_path: Path, chmod: Callable[[Path, int], None]
-) -> None:
-    """An existing file without write permission yields PermissionError."""
-    p = tmp_path / "out.tsv"
-    p.write_text("locked\n")
-    chmod(p, 0o444)
-    error = path_write_error(p)
-    assert isinstance(error, PermissionError)
-    assert "not writable" in str(error)
 
 
 def test_path_write_error_for_readonly_parent(
@@ -156,7 +139,7 @@ def test_path_write_error_for_readonly_parent(
     d = tmp_path / "readonly"
     d.mkdir()
     chmod(d, 0o555)
-    error = path_write_error(d / "out.tsv")
+    error = path_write_error(d / "out.tsv", overwrite=False)
     assert isinstance(error, PermissionError)
     assert "not writable" in str(error)
 
@@ -170,11 +153,6 @@ def test_path_write_error_overwrite_false_for_existing_file(tmp_path: Path) -> N
     assert "already exists" in str(error)
 
 
-def test_path_write_error_overwrite_false_allows_new_file(tmp_path: Path) -> None:
-    """With `overwrite=False`, a nonexistent file in a writable directory yields no error."""
-    assert path_write_error(tmp_path / "out.tsv", overwrite=False) is None
-
-
 def test_path_write_error_overwrite_false_for_symlink_to_existing_file(tmp_path: Path) -> None:
     """With `overwrite=False`, a symlink resolving to an existing file yields FileExistsError."""
     target = tmp_path / "target.tsv"
@@ -186,14 +164,6 @@ def test_path_write_error_overwrite_false_for_symlink_to_existing_file(tmp_path:
     assert "already exists" in str(error)
 
 
-def test_path_write_error_overwrite_false_allows_broken_symlink(tmp_path: Path) -> None:
-    """With `overwrite=False`, a symlink to a nonexistent target is not a clobber and is allowed."""
-    link = tmp_path / "link.tsv"
-    link.symlink_to(tmp_path / "target.tsv")
-    # Writing through the link creates the target, so there is nothing to overwrite.
-    assert path_write_error(link, overwrite=False) is None
-
-
 def test_path_write_error_overwrite_false_allows_fifo(tmp_path: Path) -> None:
     """With `overwrite=False`, a non-regular file such as a FIFO is not a clobber and is allowed."""
     p = tmp_path / "fifo"
@@ -201,20 +171,22 @@ def test_path_write_error_overwrite_false_allows_fifo(tmp_path: Path) -> None:
     assert path_write_error(p, overwrite=False) is None
 
 
-def test_path_write_error_overwrite_false_for_directory(tmp_path: Path) -> None:
-    """With `overwrite=False`, a directory still yields the more specific IsADirectoryError."""
-    error = path_write_error(tmp_path, overwrite=False)
+@pytest.mark.parametrize("overwrite", [True, False])
+def test_path_write_error_directory_beats_overwrite(tmp_path: Path, overwrite: bool) -> None:
+    """A directory yields the more specific IsADirectoryError regardless of `overwrite`."""
+    error = path_write_error(tmp_path, overwrite=overwrite)
     assert isinstance(error, IsADirectoryError)
     assert "is a directory" in str(error)
 
 
-def test_path_write_error_overwrite_false_for_readonly_file(
-    tmp_path: Path, chmod: Callable[[Path, int], None]
+@pytest.mark.parametrize("overwrite", [True, False])
+def test_path_write_error_readonly_file_beats_overwrite(
+    tmp_path: Path, chmod: Callable[[Path, int], None], overwrite: bool
 ) -> None:
-    """With `overwrite=False`, a read-only existing file still yields PermissionError first."""
+    """A read-only existing file yields PermissionError first, regardless of `overwrite`."""
     p = tmp_path / "out.tsv"
     p.write_text("locked\n")
     chmod(p, 0o444)
-    error = path_write_error(p, overwrite=False)
+    error = path_write_error(p, overwrite=overwrite)
     assert isinstance(error, PermissionError)
     assert "not writable" in str(error)
