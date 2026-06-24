@@ -7,13 +7,13 @@ from typing import Self
 from pydantic import BaseModel
 
 from fgmetric.converters import CounterPivotTable
-from fgmetric.converters import DelimitedList
+from fgmetric.converters import DelimitedCollection
 from fgmetric.converters import NullSentinels
 from fgmetric.metric_reader import MetricReader
 
 
 class Metric(
-    DelimitedList,
+    DelimitedCollection,
     CounterPivotTable,
     NullSentinels,
     BaseModel,

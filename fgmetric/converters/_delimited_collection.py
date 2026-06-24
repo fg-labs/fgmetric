@@ -19,7 +19,7 @@ Fieldname: TypeAlias = str
 
 # NB: Inheriting from BaseModel is necessary to declare field/model validators on the mixin, and
 # for the class-level validations defined in `__pydantic_init_subclass__` to work.
-class DelimitedList(BaseModel):
+class DelimitedCollection(BaseModel):
     """
     Serialize and deserialize delimited lists of (de)serializable types.
 
