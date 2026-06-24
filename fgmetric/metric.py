@@ -40,10 +40,10 @@ class Metric(
     2. **Delimited lists.** Any field typed as `list[T]` will be parsed from and serialized to a
        delimited string. The list delimiter may be controlled by the `collection_delimiter` class
        variable.
-    3. **Boolean tokens.** Fields typed as `bool` (or `bool | None`) are parsed from a narrow,
-       case-insensitive token set (`true`/`t`/`1`, `false`/`f`/`0`), rejecting anything else
-       rather than applying Pydantic's broader coercion. The accepted tokens may be overridden by
-       the `true_tokens`/`false_tokens` class variables.
+    3. **Boolean tokens.** Fields typed as `bool` (or `bool | None`), and the elements of
+       `list[bool]` fields, are parsed from a narrow, case-insensitive token set (`true`/`t`/`1`,
+       `false`/`f`/`0`), rejecting anything else rather than applying Pydantic's broader coercion.
+       The accepted tokens may be overridden by the `true_tokens`/`false_tokens` class variables.
 
     Class Variables:
         collection_delimiter: A single-character delimiter used to split and join `list` fields

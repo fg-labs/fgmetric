@@ -207,6 +207,39 @@ def is_bool(annotation: TypeAnnotation | None) -> bool:
     return annotation is bool
 
 
+def is_bool_list(annotation: TypeAnnotation | None) -> bool:
+    """
+    Check if a type annotation is a list with `bool` (or optional `bool`) elements.
+
+    Matches `list[bool]` and `list[bool | None]`, including when the list itself is optional
+    (e.g. `list[bool] | None`). The element check reuses `is_bool`, so a list of any other element
+    type - including `int`, despite `bool` being a subclass - is not matched.
+
+    Examples:
+        >>> is_bool_list(list[bool])
+        True
+        >>> is_bool_list(list[bool | None])
+        True
+        >>> is_bool_list(list[bool] | None)
+        True
+        >>> is_bool_list(list[int])
+        False
+        >>> is_bool_list(bool)
+        False
+    """
+    if annotation is None:
+        return False
+
+    if is_optional(annotation):
+        annotation = unpack_optional(annotation)
+
+    if not is_list(annotation):
+        return False
+
+    args = get_args(annotation)
+    return len(args) == 1 and is_bool(args[0])
+
+
 def is_counter(annotation: TypeAnnotation | None) -> bool:
     """
     True if the type annotation is a Counter.

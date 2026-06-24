@@ -115,6 +115,90 @@ def test_bool_fieldnames_computed() -> None:
     assert Model._bool_fieldnames == {"flag", "maybe_flag"}
 
 
+def test_bool_list_elements_resolve_tokens() -> None:
+    """Each element of a `list[bool]` field is resolved from the configured tokens."""
+
+    class Model(BoolTokens):
+        flags: list[bool]
+
+    assert Model.model_validate({"flags": ["true", "f", "1", "0"]}).flags == [
+        True,
+        False,
+        True,
+        False,
+    ]
+
+
+@pytest.mark.parametrize("token", ["yes", "y", "on", "no", "n", "off", "x", ""])
+def test_bool_list_rejects_pydantic_extra_tokens(token: str) -> None:
+    """A list element Pydantic would coerce but fgpyo rejects raises a ValidationError."""
+
+    class Model(BoolTokens):
+        flags: list[bool]
+
+    with pytest.raises(ValidationError):
+        Model.model_validate({"flags": ["true", token]})
+
+
+def test_optional_element_bool_list_preserves_none() -> None:
+    """A `list[bool | None]` resolves string elements but leaves real `None` elements alone."""
+
+    class Model(BoolTokens):
+        flags: list[bool | None]
+
+    assert Model.model_validate({"flags": ["true", None, "false"]}).flags == [True, None, False]
+
+
+def test_real_bool_list_input_passes_through() -> None:
+    """Actual `bool` elements (in-memory construction) are not affected."""
+
+    class Model(BoolTokens):
+        flags: list[bool]
+
+    assert Model(flags=[True, False]).flags == [True, False]
+
+
+def test_bool_list_fieldnames_computed() -> None:
+    """Only list fields with `bool` / `bool | None` elements are recorded as bool list fields."""
+
+    class Model(BoolTokens):
+        flags: list[bool]
+        maybe_flags: list[bool | None]
+        opt_flags: list[bool] | None
+        tags: list[int]
+        flag: bool
+
+    assert Model._bool_list_fieldnames == {"flags", "maybe_flags", "opt_flags"}
+    assert Model._bool_fieldnames == {"flag"}
+
+
+def test_metric_bool_list_is_strict() -> None:
+    """A `list[bool]` column on a `Metric` rejects the same tokens a scalar `bool` column does."""
+
+    class FlagMetric(Metric):
+        flags: list[bool]
+
+    # The strict tokens resolve, splitting on the collection delimiter first.
+    assert FlagMetric.model_validate({"flags": "true,false,1,0"}).flags == [
+        True,
+        False,
+        True,
+        False,
+    ]
+    # Tokens Pydantic would coerce are rejected, matching scalar `bool` behavior.
+    with pytest.raises(ValidationError):
+        FlagMetric.model_validate({"flags": "yes,on,no"})
+
+
+def test_metric_optional_element_bool_list() -> None:
+    """Empty cells in a `list[bool | None]` column become `None`; the rest are tokenized."""
+
+    class FlagMetric(Metric):
+        flags: list[bool | None]
+
+    assert FlagMetric.model_validate({"flags": "1,,0"}).flags == [True, None, False]
+
+
 def test_custom_tokens() -> None:
     """Custom token sets replace the defaults."""
 

@@ -7,6 +7,7 @@ from pydantic import ValidationInfo
 from pydantic import field_validator
 
 from fgmetric._typing_extensions import is_bool
+from fgmetric._typing_extensions import is_bool_list
 
 
 # NB: Inheriting from BaseModel is necessary to declare field validators on the mixin, and for the
@@ -30,6 +31,11 @@ class BoolTokens(BaseModel):
 
     Tokens are matched case-insensitively. `true_tokens` and `false_tokens` must be disjoint;
     declaring a token in both is rejected at class definition.
+
+    Fields whose elements are bool - `list[bool]` and `list[bool | None]` - are tokenized per
+    element, so a list-of-bool column and a scalar `bool` column on the same model agree on what
+    counts as a valid boolean. Non-string values (and non-string list elements, such as a `None`
+    from an empty `list[bool | None]` cell) are left to Pydantic.
 
     Class Variables:
         true_tokens: The strings resolved to `True`. Defaults to `frozenset({"true", "t", "1"})`.
@@ -62,6 +68,9 @@ class BoolTokens(BaseModel):
             true_tokens = frozenset({"yes", "y"})
             false_tokens = frozenset({"no", "n"})
             flag: bool
+
+        MyMetric.model_validate({"flag": "1"})           # -> ValidationError
+        MyMetric.model_validate({"flag": "yes"}).flag    # -> True
         ```
     """
 
@@ -74,6 +83,12 @@ class BoolTokens(BaseModel):
     _false_tokens: ClassVar[frozenset[str]]
 
     _bool_fieldnames: ClassVar[set[str]]
+    # NB: list-scoped because `list` is the only delimited collection today. When the
+    # `DelimitedCollection` work (#76) lands, generalize `is_bool_list` -> `is_bool_collection`
+    # (built on `is_collection`) so `set`/`frozenset`/`tuple` bool elements are tokenized too; the
+    # per-element logic below already works on the post-split list. Fixed-arity tuples (mixed
+    # element types) and dict bool values need their own handling.
+    _bool_list_fieldnames: ClassVar[set[str]]
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
@@ -81,7 +96,8 @@ class BoolTokens(BaseModel):
         Record bool fields and the case-folded token sets used for matching.
 
         1. The names of all fields annotated as `bool` or `bool | None` are stored in the private
-           `_bool_fieldnames` class variable.
+           `_bool_fieldnames` class variable, and the names of all fields whose elements are bool
+           (e.g. `list[bool]`, `list[bool | None]`) in `_bool_list_fieldnames`.
         2. `true_tokens` and `false_tokens` are case-folded into private sets for case-insensitive
            matching, and validated to be disjoint.
         """
@@ -89,6 +105,9 @@ class BoolTokens(BaseModel):
 
         cls._bool_fieldnames = {
             name for name, info in cls.model_fields.items() if is_bool(info.annotation)
+        }
+        cls._bool_list_fieldnames = {
+            name for name, info in cls.model_fields.items() if is_bool_list(info.annotation)
         }
         cls._true_tokens = frozenset(token.casefold() for token in cls.true_tokens)
         cls._false_tokens = frozenset(token.casefold() for token in cls.false_tokens)
@@ -108,17 +127,28 @@ class BoolTokens(BaseModel):
     @field_validator("*", mode="before")
     @classmethod
     def _parse_bool_tokens(cls, value: Any, info: ValidationInfo) -> Any:
-        """Resolve string values on bool fields to `True`/`False` from the configured tokens."""
+        """Resolve string values on bool (and bool-list) fields from the configured tokens."""
         if isinstance(value, str) and info.field_name in cls._bool_fieldnames:
-            token = value.casefold()
-            if token in cls._true_tokens:
-                return True
-            elif token in cls._false_tokens:
-                return False
-            else:
-                raise ValueError(
-                    f"Invalid boolean token {value!r}; expected one of"
-                    f" {sorted(cls.true_tokens | cls.false_tokens)}"
-                )
+            return cls._resolve_token(value)
+
+        # On `Metric`, `DelimitedList` runs first and has already split a bool-list cell into a
+        # list of string elements by the time this validator sees it; resolve each element. Real
+        # `None` elements (e.g. an empty cell in a `list[bool | None]`) are left for Pydantic.
+        if isinstance(value, list) and info.field_name in cls._bool_list_fieldnames:
+            return [cls._resolve_token(el) if isinstance(el, str) else el for el in value]
 
         return value
+
+    @classmethod
+    def _resolve_token(cls, value: str) -> bool:
+        """Resolve a single string token to `True`/`False`, or raise if it is not configured."""
+        token = value.casefold()
+        if token in cls._true_tokens:
+            return True
+        elif token in cls._false_tokens:
+            return False
+        else:
+            raise ValueError(
+                f"Invalid boolean token {value!r}; expected one of"
+                f" {sorted(cls.true_tokens | cls.false_tokens)}"
+            )
