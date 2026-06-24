@@ -34,7 +34,7 @@ class Metric(
     `Metric` includes the following custom serialization/deserialization behaviors:
     1. **Null sentinels.** Empty strings in Optional fields are converted to `None` before field
        validation. The sentinel values converted to `None` can be overridden by the
-       `null_sentinels` class variable.
+       `null_sentinels` class variable. See `NullSentinels`.
     2. **Delimited lists.** Any field typed as `list[T]` will be parsed from and serialized to a
        delimited string. The list delimiter may be controlled by the `collection_delimiter` class
        variable.

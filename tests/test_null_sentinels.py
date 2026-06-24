@@ -6,6 +6,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import ValidationError
 
+from fgmetric import Metric
 from fgmetric.converters import NullSentinels
 
 
@@ -146,3 +147,26 @@ def test_sentinel_on_required_field_still_raises() -> None:
 
     with pytest.raises(ValidationError):
         Model.model_validate({"value": ""})
+
+
+def test_optional_list_empties_to_none_but_required_list_empties_to_empty_list() -> None:
+    """
+    Null-sentinel substitution and `DelimitedList` splitting compose correctly on `""`.
+
+    `_substitute_null_sentinels` (model `mode="before"`) runs before `_split_lists` (a field
+    validator), so an empty string in an Optional list field becomes `None`, while an empty
+    string in a required list field is left untouched and `_split_lists` turns it into `[]`.
+    """
+
+    class FakeMetric(Metric):
+        required: list[int]
+        optional: list[int] | None
+
+    result = FakeMetric.model_validate({"required": "", "optional": ""})
+    assert result.required == []  # not Optional -> untouched -> split to []
+    assert result.optional is None  # Optional -> "" substituted to None before splitting
+
+    # Non-empty values still parse as delimited lists in both cases.
+    populated = FakeMetric.model_validate({"required": "1,2", "optional": "3,4"})
+    assert populated.required == [1, 2]
+    assert populated.optional == [3, 4]

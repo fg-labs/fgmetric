@@ -53,22 +53,22 @@ class NullSentinels(BaseModel):
         Treat empty strings as null:
 
         ```python
-        class MyMetric(Metric):
+        class MyModel(NullSentinels):
             null_sentinels = frozenset({""})
             name: str
             count: int | None
 
-        MyMetric.model_validate({"name": "foo", "count": ""}).count  # -> None
+        MyModel.model_validate({"name": "foo", "count": ""}).count  # -> None
         ```
 
         Treat multiple sentinels as null:
 
         ```python
-        class MyMetric(Metric):
+        class MyModel(NullSentinels):
             null_sentinels = frozenset({"", "NA"})
             count: int | None
 
-        MyMetric.model_validate({"count": "NA"}).count  # -> None
+        MyModel.model_validate({"count": "NA"}).count  # -> None
         ```
     """
 
@@ -93,6 +93,13 @@ class NullSentinels(BaseModel):
             keys |= _validation_keys(info)
         cls._optional_field_keys = keys
 
+    # NB: This is a `mode="before"` model validator, so it runs before field validators such as
+    # `DelimitedList._split_lists`. A configured sentinel in an Optional field is therefore always
+    # rewritten to `None` before any field validator runs. The ordering matters for delimited list
+    # fields when `""` is a sentinel (as it is by default on `Metric`):
+    #   - `list[T] | None`: the Optional field's "" is rewritten to `None` here, before
+    #     `_split_lists` runs.
+    #   - `list[T]`: the required field's "" is left untouched and `_split_lists` turns it into [].
     @final
     @model_validator(mode="before")
     @classmethod
