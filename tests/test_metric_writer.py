@@ -241,3 +241,23 @@ def test_writer_open_raises_permission_error_for_readonly_parent(
     with pytest.raises(PermissionError, match="not writable"):
         with MetricWriter.open(FakeMetric, d / "out.tsv"):
             pass
+
+
+def test_writer_open_refuses_to_overwrite_existing_file_by_default(tmp_path: Path) -> None:
+    """MetricWriter.open refuses to clobber an existing file unless `overwrite=True`."""
+    p = tmp_path / "out.tsv"
+    p.write_text("existing\n")
+    with pytest.raises(FileExistsError, match="already exists"):
+        with MetricWriter.open(FakeMetric, p):
+            pass
+    # The refusal must fire before the file is opened, so the contents are untouched.
+    assert p.read_text() == "existing\n"
+
+
+def test_writer_open_overwrites_existing_file_when_overwrite_true(tmp_path: Path) -> None:
+    """With `overwrite=True`, MetricWriter.open truncates and rewrites an existing file."""
+    p = tmp_path / "out.tsv"
+    p.write_text("stale\tcontent\nto be replaced\n")
+    with MetricWriter.open(FakeMetric, p, overwrite=True) as writer:
+        writer.write(FakeMetric(foo="abc", bar=1))
+    assert p.read_text() == "foo\tbar\nabc\t1\n"

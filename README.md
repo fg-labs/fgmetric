@@ -164,6 +164,20 @@ with MetricWriter.open(AlignmentMetric, "output.tsv.bz2") as writer:
     writer.writeall(metrics)
 ```
 
+### Overwriting existing files
+
+`MetricWriter.open()` refuses to clobber an existing file, raising `FileExistsError`. Pass `overwrite=True` to truncate and overwrite it:
+
+```python
+# Raises FileExistsError if output.tsv already exists
+with MetricWriter.open(AlignmentMetric, "output.tsv") as writer:
+    writer.writeall(metrics)
+
+# Replaces output.tsv if it exists
+with MetricWriter.open(AlignmentMetric, "output.tsv", overwrite=True) as writer:
+    writer.writeall(metrics)
+```
+
 ### List Fields
 
 Fields typed as `list[T]` are automatically parsed from and serialized to delimited strings:

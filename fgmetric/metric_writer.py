@@ -60,6 +60,7 @@ class MetricWriter[T: Metric]:
         delimiter: str | None = None,
         lineterminator: str = "\n",
         encoding: str = "utf-8",
+        overwrite: bool = False,
     ) -> Iterator[Self]:
         """
         Open `path` for writing and yield a `MetricWriter` over it.
@@ -82,6 +83,8 @@ class MetricWriter[T: Metric]:
                 suffix. Unrecognized extensions raise `ValueError`.
             lineterminator: The string used to terminate lines.
             encoding: The text encoding used to write the file.
+            overwrite: By default, opening an existing file for writing will raise
+                `FileExistsError`. Pass `True` to destructively overwrite an existing file.
 
         Yields:
             A `MetricWriter` over the opened file.
@@ -92,6 +95,7 @@ class MetricWriter[T: Metric]:
             IsADirectoryError: If `path` is a directory.
             PermissionError: If `path` exists but is not writable, or if `path` cannot be
                 created in its parent directory.
+            FileExistsError: If `path` already exists and `overwrite` is `False`.
             ValueError: If `delimiter` is omitted and the delimiter cannot be inferred from
                 the file extension.
 
@@ -101,7 +105,7 @@ class MetricWriter[T: Metric]:
                 writer.writeall(metrics)
             ```
         """
-        if (error := path_write_error(path)) is not None:
+        if (error := path_write_error(path, overwrite=overwrite)) is not None:
             raise error
         if delimiter is None:
             delimiter = infer_delimiter(path)
