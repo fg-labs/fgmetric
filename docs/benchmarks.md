@@ -5,7 +5,7 @@
 On example files with 10,000 and 100,000 rows, fgmetric's Pydantic-based validation is ~5x faster than fgpyo's reflection-based approach.
 
 ```console
-$ uv run --extra benchmark poe benchmark
+$ uv run --group benchmark poe benchmark
 
 --------------------------------------------------------------------------- benchmark 'num_rows=1e4': 2 tests ----------------------------------------------------------------------------
 Name (time in ms)           Min                 Max                Mean            StdDev              Median               IQR            Outliers      OPS            Rounds  Iterations
@@ -27,7 +27,7 @@ test_fgpyo[1e5]        2,764.4992 (5.04)     2,790.0149 (4.81)     2,775.1369 (4
 To run the benchmarks yourself:
 
 ```console
-uv run --extra benchmark poe benchmark
+uv run --group benchmark poe benchmark
 ```
 
-This requires the `benchmark` optional dependency group, which includes `pytest-benchmark` and `fgpyo`.
+This requires the `benchmark` dependency group, which includes `pytest-benchmark` and `fgpyo`.
