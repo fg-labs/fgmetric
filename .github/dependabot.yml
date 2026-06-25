@@ -13,3 +13,29 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+
+  # Python dependencies (uv) — reads pyproject.toml + uv.lock.
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Library: only raise a constraint when the new locked version falls
+    # outside the existing range. Keeps the `>=` floors on runtime deps
+    # (pydantic, xopen) loose while still bumping the `==`-pinned dev tools.
+    versioning-strategy: "increase-if-necessary"
+    # Benchmark deps are test-only; freeze them rather than auto-bumping.
+    ignore:
+      - dependency-name: "pytest-benchmark"
+      - dependency-name: "fgpyo"
+    groups:
+      python-runtime:
+        dependency-type: "production"
+        patterns:
+          - "*"
+      python-dev:
+        dependency-type: "development"
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
