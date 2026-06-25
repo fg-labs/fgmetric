@@ -8,6 +8,7 @@ from typing import Literal
 from typing import Self
 from typing import TextIO
 
+from pydantic import ValidationError
 from xopen import xopen
 
 from fgmetric._delimiter import infer_delimiter
@@ -15,25 +16,26 @@ from fgmetric._paths import path_write_error
 from fgmetric.metric import Metric
 
 
-def _read_existing_header(
+def _read_first_row(
     path: Path | str,
     delimiter: str,
     encoding: str,
 ) -> list[str] | None:
     """
-    Return the header row of an existing, non-empty file, or `None`.
+    Return the first row of an existing, non-empty file as a list of cells, or `None`.
 
     Returns `None` when the file is missing or empty. Otherwise the first row is parsed with
     `csv.DictReader` — the symmetric counterpart to the `DictWriter` used to write metrics — so it
-    is interpreted exactly as it was written, and its field names are returned.
+    is interpreted exactly as it was written. The row may be a header or a data record; the caller
+    decides which by comparing it to the expected column names and validating it against the model.
 
     Args:
         path: Filesystem path to inspect.
-        delimiter: The delimiter used to parse the header row.
+        delimiter: The delimiter used to parse the row.
         encoding: The text encoding used to decode the file.
 
     Returns:
-        The parsed header row, or `None` if the file is missing or empty.
+        The parsed first row, or `None` if the file is missing or empty.
     """
     file = Path(path)
     # A zero-byte file is not a valid compressed stream; checking the size first avoids the
@@ -45,6 +47,35 @@ def _read_existing_header(
         return None if fieldnames is None else list(fieldnames)
 
 
+def _row_validates_as_record(
+    metric_class: type[Metric],
+    fieldnames: list[str],
+    row: list[str],
+) -> bool:
+    """
+    Whether `row`, zipped onto `fieldnames`, validates as a record of `metric_class`.
+
+    The cells are mapped to `fieldnames` and validated with `model_validate`, the same path
+    `MetricReader` uses to parse a row. A row with the wrong number of cells cannot be a record,
+    so it is rejected without attempting validation.
+
+    Args:
+        metric_class: Metric class to validate against.
+        fieldnames: The expected column names (the metric's header fields).
+        row: The parsed cells of the row to validate.
+
+    Returns:
+        `True` if the row validates as a record, `False` otherwise.
+    """
+    if len(row) != len(fieldnames):
+        return False
+    try:
+        metric_class.model_validate(dict(zip(fieldnames, row, strict=True)))
+    except ValidationError:
+        return False
+    return True
+
+
 def _append_needs_header(
     metric_class: type[Metric],
     path: Path | str,
@@ -52,39 +83,42 @@ def _append_needs_header(
     encoding: str,
 ) -> bool:
     """
-    Validate the header of a file opened for appending and report whether to write one.
+    Inspect a file opened for appending and report whether to write a header.
 
     Returns `True` when `path` is missing or empty — append-or-create writes a fresh header.
-    When `path` already has content, its first row is validated against the metric class's
-    fields and a `ValueError` is raised on a mismatch; otherwise `False` is returned so the
-    existing header is left untouched.
+    When `path` already has content, its first row is accepted if it either matches the expected
+    header or validates as a record of the metric class (a headerless data file); in both cases
+    `False` is returned so no header is written into the middle of the file. A `ValueError` is
+    raised only when the first row is neither.
 
     Args:
-        metric_class: Metric class whose fields the existing header must match.
+        metric_class: Metric class whose header/records the file must be consistent with.
         path: Filesystem path being opened for appending.
-        delimiter: The delimiter used to parse the existing header row.
+        delimiter: The delimiter used to parse the first row.
         encoding: The text encoding used to decode the file.
 
     Returns:
         Whether a header row must be written.
 
     Raises:
-        ValueError: If `path` is non-empty and its header does not match the metric fields.
+        ValueError: If `path` is non-empty and its first row is neither the expected header nor a
+            valid record.
     """
-    existing = _read_existing_header(path, delimiter, encoding)
-    if existing is None:
+    first_row = _read_first_row(path, delimiter, encoding)
+    if first_row is None:
         return True
 
     expected = metric_class._header_fieldnames()
-    if existing != expected:
-        raise ValueError(
-            f"Existing header in {path} does not match "
-            f"{metric_class.__name__} fields.\n"
-            f"  expected: {expected}\n"
-            f"  found:    {existing}"
-        )
+    # A matching header, or a headerless file whose first row validates as a record: append after
+    # the existing content without writing a header.
+    if first_row == expected or _row_validates_as_record(metric_class, expected, first_row):
+        return False
 
-    return False
+    raise ValueError(
+        f"First row of {path} is neither a {metric_class.__name__} header nor a valid record.\n"
+        f"  expected header: {expected}\n"
+        f"  found:           {first_row}"
+    )
 
 
 class MetricWriter[T: Metric]:
@@ -157,13 +191,14 @@ class MetricWriter[T: Metric]:
         With `mode="w"` (the default) the file is truncated and the header row is written (refused
         with `FileExistsError` if the file already exists and `overwrite` is `False`). With
         `mode="a"` the file is opened for appending: if it is missing or empty the header is
-        written first (append-or-create); if it already has content, its first row is validated
-        against the metric class's fields (parsed with `delimiter`) and a `ValueError` is raised on
-        a mismatch — no header is written in that case. The existing header is read with the same
-        `encoding`, so a foreign file written with a different delimiter or a BOM will fail
-        validation (`MetricReader.open` defaults to `utf-8-sig`, which strips a BOM; the writer
-        does not). `MetricWriter` always terminates rows with `lineterminator`, so appending to a
-        foreign file whose last line lacks a trailing newline would concatenate.
+        written first (append-or-create); if it already has content, its first row is inspected and
+        rows are appended without writing a header when that row either matches the expected header
+        or validates as a record of the metric class (a headerless data file). A `ValueError` is
+        raised only when the first row is neither. The first row is parsed with the same `delimiter`
+        and `encoding`, so a foreign file written with a different delimiter or a BOM will fail to
+        validate (`MetricReader.open` defaults to `utf-8-sig`, which strips a BOM; the writer does
+        not). `MetricWriter` always terminates rows with `lineterminator`, so appending to a foreign
+        file whose last line lacks a trailing newline would concatenate.
 
         The file is opened lazily on context entry and closed on context exit.
 
@@ -192,8 +227,8 @@ class MetricWriter[T: Metric]:
                 created in its parent directory.
             FileExistsError: If `path` already exists, `mode="w"`, and `overwrite` is `False`.
             ValueError: If `delimiter` is omitted and cannot be inferred from the file
-                extension, or if `mode="a"` and the existing file's header does not match the
-                metric class's fields.
+                extension, or if `mode="a"` and the existing file's first row is neither the
+                expected header nor a valid record.
 
         Example:
             ```python

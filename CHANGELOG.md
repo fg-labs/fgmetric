@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 - Add an `encoding` kwarg on `MetricReader.open` and `MetricWriter.open` (#43)
 - Transparent gzip/bz2/xz support via `xopen` (#44)
 - Infer the delimiter from the file extension in `MetricReader.open`/`MetricWriter.open`; pass `delimiter=` to override (#61)
-- Add append mode to `MetricWriter.open()` via `mode="a"` (#47)
+- Add append mode to `MetricWriter.open()` via `mode="a"`; appends to a file that has a matching header or that is headerless data validated against the model, raising only when the first row is neither (#47)
 
 ### Changed
 
