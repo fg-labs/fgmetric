@@ -47,8 +47,6 @@ dev = [
 ipython = [
     "ipython ~=9.2",
 ]
-
-[project.optional-dependencies]
 benchmark = [
     "pytest-benchmark ~=5.1.0",
     "fgpyo ~=1.2.0",

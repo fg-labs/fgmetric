@@ -157,13 +157,11 @@ dependencies = [
     { name = "xopen" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 benchmark = [
     { name = "fgpyo" },
     { name = "pytest-benchmark" },
 ]
-
-[package.dev-dependencies]
 dev = [
     { name = "mypy" },
     { name = "poethepoet" },
@@ -179,14 +177,15 @@ ipython = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fgpyo", marker = "extra == 'benchmark'", specifier = "~=1.2.0" },
     { name = "pydantic", specifier = ">=2.11.4" },
-    { name = "pytest-benchmark", marker = "extra == 'benchmark'", specifier = "~=5.1.0" },
     { name = "xopen", specifier = ">=2.0.0" },
 ]
-provides-extras = ["benchmark"]
 
 [package.metadata.requires-dev]
+benchmark = [
+    { name = "fgpyo", specifier = "~=1.2.0" },
+    { name = "pytest-benchmark", specifier = "~=5.1.0" },
+]
 dev = [
     { name = "mypy", specifier = "==1.18.2" },
     { name = "poethepoet", specifier = "~=0.34" },
