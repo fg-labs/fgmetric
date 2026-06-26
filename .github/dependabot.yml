@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Batch all action bumps into a single PR to reduce noise.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    # `chore(deps)` is skipped by git-cliff's default changelog config.
+    commit-message:
+      prefix: "chore"
+      include: "scope"
