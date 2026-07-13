@@ -48,6 +48,17 @@ def test_header_fieldnames_respect_alias() -> None:
     assert AliasRecord._header_fieldnames() == ["name", "count"]
 
 
+def test_default_header_fieldnames_matches_header_fieldnames() -> None:
+    """
+    Test `_default_header_fieldnames` is the plain header `_header_fieldnames` delegates to.
+
+    Header-rewriting mixins build on this `@final` helper instead of `super()`, so it must return
+    the same alias-aware, field-per-column header as the default `_header_fieldnames`.
+    """
+    assert PlainRecord._default_header_fieldnames() == PlainRecord._header_fieldnames()
+    assert AliasRecord._default_header_fieldnames() == ["name", "count"]
+
+
 def test_does_not_apply_null_sentinels() -> None:
     """Test `RecordModel` leaves empty Optional fields untouched (no null-sentinel converter)."""
     record = PlainRecord.model_validate({"name": "a", "note": ""})

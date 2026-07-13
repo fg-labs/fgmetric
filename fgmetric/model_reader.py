@@ -16,6 +16,9 @@ from fgmetric._paths import path_read_error
 if TYPE_CHECKING:
     from fgmetric.record_model import RecordModel
 
+DEFAULT_ENCODING = "utf-8-sig"
+"""Default read encoding; strips a UTF-8 BOM so Excel-exported CSVs open cleanly."""
+
 
 class ModelReader[T: RecordModel]:
     """
@@ -78,7 +81,7 @@ class ModelReader[T: RecordModel]:
         path: Path | str,
         delimiter: str | None = None,
         fieldnames: Sequence[str] | None = None,
-        encoding: str = "utf-8-sig",
+        encoding: str = DEFAULT_ENCODING,
     ) -> Iterator[Self]:
         """
         Open `path` and yield a `ModelReader` over its contents.

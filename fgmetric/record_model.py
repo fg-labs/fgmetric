@@ -2,9 +2,11 @@ from abc import ABC
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Self
+from typing import final
 
 from pydantic import BaseModel
 
+from fgmetric.model_reader import DEFAULT_ENCODING
 from fgmetric.model_reader import ModelReader
 
 
@@ -25,6 +27,13 @@ class RecordModel(BaseModel, ABC):
 
     Subclasses should define their fields using Pydantic field annotations.
 
+    Note:
+        `RecordModel` applies no null-sentinel handling, so `T | None` fields do not round-trip
+        `None`. On write, `None` serializes to an empty cell; on read, that empty cell comes back
+        as `""` - for a `str | None` field it validates to `""` (not `None`), and for a non-string
+        optional (e.g. `int | None`) it raises a `ValidationError`. Use `Metric`, or add the
+        `NullSentinels` mixin, if you need `None` preserved across a write/read cycle.
+
     Example:
         ```python
         class AlignmentRecord(RecordModel):
@@ -42,10 +51,11 @@ class RecordModel(BaseModel, ABC):
     def read(
         cls,
         path: Path | str,
-        # NB: these defaults mirror `ModelReader.open()`; keep them in sync.
+        # NB: `encoding` mirrors `ModelReader.open`. Unlike `open`, `read` does not infer the
+        # delimiter from the file extension - it defaults to a literal tab.
         delimiter: str = "\t",
         fieldnames: Sequence[str] | None = None,
-        encoding: str = "utf-8-sig",
+        encoding: str = DEFAULT_ENCODING,
     ) -> list[Self]:
         """
         Read all instances from a file path.
@@ -109,8 +119,9 @@ class RecordModel(BaseModel, ABC):
         the model's field names when aliases are used.
 
         Subclasses and mixins (e.g., `CounterPivotTable`) may override this method to adjust the
-        header to match a custom serializer. Such overrides should call `super()` to obtain the
-        default field-per-column header and then transform it.
+        header to match a custom serializer. Such overrides should build on
+        `_default_header_fieldnames` (the plain field-per-column header) rather than `super()`,
+        so they do not depend on their position in the model's MRO.
 
         Note:
             This method is deliberately not used during reading/validation; see
@@ -121,9 +132,22 @@ class RecordModel(BaseModel, ABC):
         """
         # TODO: support returning the set of fields that would be constructed if the class has a
         # custom model serializer
+        return cls._default_header_fieldnames()
 
-        # Resolve each field to the key it serializes under (its alias, when one is set), so the
-        # header matches the keys produced by `model_dump(by_alias=True)`.
+    @final
+    @classmethod
+    def _default_header_fieldnames(cls) -> list[str]:
+        """
+        Return the plain field-per-column header: one column per field, in declaration order.
+
+        Each field resolves to the key it serializes under (its alias, when one is set), so the
+        header matches the keys produced by `model_dump(by_alias=True)`. This method is `@final`
+        so header-rewriting mixins can call it directly instead of routing through `super()`,
+        which would otherwise depend on MRO ordering.
+
+        Returns:
+            The list of fieldnames to use as the header row.
+        """
         return [
             info.serialization_alias or info.alias or name
             for name, info in cls.model_fields.items()
