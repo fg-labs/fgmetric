@@ -16,11 +16,10 @@ from fgmetric.record_model import RecordModel
 
 
 # NB: This mixin inherits `RecordModel` rather than `BaseModel` (unlike the other converters) so
-# that it can override `RecordModel._header_fieldnames` and call `super()` to reuse the default
-# alias-aware header. It is the only converter that rewrites the on-disk column set, so it is the
-# only one that needs the base header contract in scope. Any future converter that also overrides
-# `_header_fieldnames` must likewise inherit `RecordModel` (so `super()` type-checks) and appear
-# before it in the model's MRO (so `super()` resolves to the base header, not `BaseModel`).
+# that `_default_header_fieldnames` is in scope for its `_header_fieldnames` override. It is the
+# only converter that rewrites the on-disk column set. Any future converter that also overrides
+# `_header_fieldnames` should build on `_default_header_fieldnames` (not `super()`) so the result
+# does not depend on MRO ordering.
 class CounterPivotTable(RecordModel):
     """
     A mixin to support pivot table representations of Counters.
@@ -230,7 +229,7 @@ class CounterPivotTable(RecordModel):
             # -> ["name", "red", "green", "blue"]
             ```
         """
-        default_header = super()._header_fieldnames()
+        default_header = cls._default_header_fieldnames()
 
         if cls._counter_fieldname is None:
             # Short circuit if we don't have a Counter field
