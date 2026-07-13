@@ -186,8 +186,8 @@ Fields typed as `list[T]` are automatically parsed from and serialized to delimi
 ```python
 class TaggedRead(Metric):
     read_id: str
-    tags: list[str]           # "A,B,C" becomes ["A", "B", "C"]
-    scores: list[int]         # "1,2,3" becomes [1, 2, 3]
+    tags: list[str]  # "A,B,C" becomes ["A", "B", "C"]
+    scores: list[int]  # "1,2,3" becomes [1, 2, 3]
     optional_tags: list[str] | None  # "" becomes None
 ```
 
