@@ -32,11 +32,10 @@ To check the unit tests in the codebase, run:
 uv run pytest
 ```
 
-To check the typing in the codebase, run both type checkers:
+To check the typing in the codebase, run:
 
 ```console
-uv run mypy
-uv run pyrefly check
+uv run check-typing
 ```
 
 To generate a code coverage report after testing locally, run:
