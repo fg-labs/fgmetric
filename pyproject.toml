@@ -38,6 +38,7 @@ classifiers     = [
 dev = [
     "ruff==0.15.20",
     "mypy==2.1.0",
+    "pyrefly==1.1.1",
     "pytest>=8.3,<10.0",
     "pytest-cov>=6.1,<8.0",
     "pytest-mock ~=3.14",
@@ -62,10 +63,17 @@ fix-all.sequence    = [
     "fix-lint"
 ]
 
-check-format = "ruff format --check --diff"
-check-lint   = "ruff check"
-check-tests  = "pytest --ignore=tests/benchmarks"
-check-typing = "mypy"
+check-format  = "ruff format --check --diff"
+check-lint    = "ruff check"
+check-tests   = "pytest --ignore=tests/benchmarks"
+check-mypy    = "mypy"
+check-pyrefly = "pyrefly check"
+
+check-typing.ignore_fail = "return_non_zero"
+check-typing.sequence    = [
+    "check-mypy",
+    "check-pyrefly",
+]
 
 check-all.ignore_fail = "return_non_zero"
 check-all.sequence    = [
@@ -116,6 +124,12 @@ module = [
     "fgpyo.*",
 ]
 ignore_missing_imports = true
+
+[tool.pyrefly]
+project-includes         = ["fgmetric", "tests"]
+python-version           = "3.12"
+# Benchmark-group deps (not installed in CI); mirrors the mypy `ignore_missing_imports` overrides above.
+replace-imports-with-any = ["fgpyo.*", "pytest_benchmark.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests/"]
