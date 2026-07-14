@@ -6,17 +6,19 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Introduce `MetricReader` for iterating metrics from any text-IO source (#41)
-- Add an `encoding` kwarg on `MetricReader.open` and `MetricWriter.open` (#43)
+- Add `RecordModel`, a mixin-free base class providing the default tabular read/write surface without the `fgmetric.converters` mixins; `Metric` now subclasses it (#10)
+- Introduce `ModelReader` for iterating records from any text-IO source (#41)
+- Add an `encoding` kwarg on `ModelReader.open` and `ModelWriter.open` (#43)
 - Transparent gzip/bz2/xz support via `xopen` (#44)
-- Infer the delimiter from the file extension in `MetricReader.open`/`MetricWriter.open`; pass `delimiter=` to override (#61)
+- Infer the delimiter from the file extension in `ModelReader.open`/`ModelWriter.open`; pass `delimiter=` to override (#61)
 
 ### Changed
 
-- `MetricWriter` is IO-first; open a path with `MetricWriter.open()` rather than passing it to the constructor (#42)
-- `Metric.read` is now a thin wrapper over `MetricReader.open` and reads eagerly, returning a `list` instead of a lazy generator; it accepts `str` paths in addition to `Path` and gains transparent decompression and the `encoding` kwarg. Use `MetricReader.open` to stream metrics without holding them all in memory (#62)
-- `MetricReader.open` and `MetricWriter.open` eagerly validate that the path is readable/writable on context entry (#66)
-- `MetricWriter.open` now refuses to overwrite an existing file by default, raising `FileExistsError`; pass `overwrite=True` to truncate and overwrite it (#69)
+- **Breaking:** Rename `MetricReader`/`MetricWriter` to `ModelReader`/`ModelWriter`; the IO classes now read and write any `RecordModel` subclass, not just `Metric` (#10)
+- **Breaking:** `ModelWriter` is IO-first; open a path with `ModelWriter.open()` rather than passing it to the constructor (#42)
+- **Breaking:** `Metric.read` is now a thin wrapper over `ModelReader.open` and reads eagerly, returning a `list` instead of a lazy generator; it accepts `str` paths in addition to `Path` and gains transparent decompression and the `encoding` kwarg. Use `ModelReader.open` to stream metrics without holding them all in memory (#62)
+- `ModelReader.open` and `ModelWriter.open` eagerly validate that the path is readable/writable on context entry (#66)
+- **Breaking:** `ModelWriter.open` now refuses to overwrite an existing file by default, raising `FileExistsError`; pass `overwrite=True` to truncate and overwrite it (#69)
 
 ## [0.3.0] - 2026-05-12
 

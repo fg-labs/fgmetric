@@ -4,8 +4,8 @@ from enum import unique
 from pathlib import Path
 
 from fgmetric import Metric
-from fgmetric import MetricReader
-from fgmetric import MetricWriter
+from fgmetric import ModelReader
+from fgmetric import ModelWriter
 
 
 class SimpleMetric(Metric):
@@ -30,10 +30,10 @@ def test_roundtrip_scalar_optional(tmp_path: Path) -> None:
     ]
 
     p = tmp_path / "metrics.tsv"
-    with MetricWriter.open(OptionalScalarMetric, p) as writer:
+    with ModelWriter.open(OptionalScalarMetric, p) as writer:
         writer.writeall(expected)
 
-    with MetricReader.open(OptionalScalarMetric, p) as reader:
+    with ModelReader.open(OptionalScalarMetric, p) as reader:
         assert list(reader) == expected
 
 
@@ -56,21 +56,21 @@ def test_roundtrip_counter(tmp_path: Path) -> None:
     ]
 
     p = tmp_path / "metrics.tsv"
-    with MetricWriter.open(CounterMetric, p) as writer:
+    with ModelWriter.open(CounterMetric, p) as writer:
         writer.writeall(expected)
 
-    with MetricReader.open(CounterMetric, p) as reader:
+    with ModelReader.open(CounterMetric, p) as reader:
         assert list(reader) == expected
 
 
 def test_roundtrip_empty_file(tmp_path: Path) -> None:
     """Writing zero rows produces a header-only file that reads back to an empty list."""
     p = tmp_path / "metrics.tsv"
-    with MetricWriter.open(SimpleMetric, p) as writer:
+    with ModelWriter.open(SimpleMetric, p) as writer:
         writer.writeall([])
 
     # The writer emits the header on context entry, so the file is header-only.
     assert p.read_bytes() == b"name\tvalue\n"
 
-    with MetricReader.open(SimpleMetric, p) as reader:
+    with ModelReader.open(SimpleMetric, p) as reader:
         assert list(reader) == []

@@ -4,7 +4,6 @@ from typing import ClassVar
 from typing import final
 from typing import get_args
 
-from pydantic import BaseModel
 from pydantic import SerializationInfo
 from pydantic import SerializerFunctionWrapHandler
 from pydantic import model_serializer
@@ -13,9 +12,15 @@ from pydantic.fields import FieldInfo
 
 from fgmetric._typing_extensions import is_counter
 from fgmetric._typing_extensions import is_optional
+from fgmetric.record_model import RecordModel
 
 
-class CounterPivotTable(BaseModel):
+# NB: This mixin inherits `RecordModel` rather than `BaseModel` (unlike the other converters) so
+# that `_default_header_fieldnames` is in scope for its `_header_fieldnames` override. It is the
+# only converter that rewrites the on-disk column set. Any future converter that also overrides
+# `_header_fieldnames` should build on `_default_header_fieldnames` (not `super()`) so the result
+# does not depend on MRO ordering.
+class CounterPivotTable(RecordModel):
     """
     A mixin to support pivot table representations of Counters.
 
@@ -200,6 +205,42 @@ class CounterPivotTable(BaseModel):
             )
 
         return enum_cls
+
+    @final
+    @classmethod
+    def _header_fieldnames(cls) -> list[str]:
+        """
+        Return the header fieldnames with the Counter field pivoted into per-member columns.
+
+        Overrides `RecordModel._header_fieldnames` to match this mixin's wide serialization: the
+        single `Counter[T]` field has no on-disk column of its own, so it is dropped from the
+        default header and replaced by one column per enum member (in enum declaration order),
+        matching the output of `_pivot_counter_values`.
+
+        Returns:
+            The list of fieldnames to use as the header row.
+
+        Example:
+            Given a model with ``name: str`` and ``counts: Counter[Color]`` where
+            ``Color`` has members ``RED``, ``GREEN``, ``BLUE``:
+
+            ```python
+            cls._header_fieldnames()
+            # -> ["name", "red", "green", "blue"]
+            ```
+        """
+        default_header = cls._default_header_fieldnames()
+
+        if cls._counter_fieldname is None:
+            # Short circuit if we don't have a Counter field
+            return default_header
+
+        # The Counter field has no alias (aliases are rejected for Counter fields), so its
+        # serialized name equals its field name; drop it from the default header and replace it
+        # with one column per enum member.
+        assert cls._counter_enum is not None  # not None iff _counter_fieldname is not None
+        non_counter = [name for name in default_header if name != cls._counter_fieldname]
+        return non_counter + [member.value for member in cls._counter_enum]
 
     @final
     @model_validator(mode="before")
