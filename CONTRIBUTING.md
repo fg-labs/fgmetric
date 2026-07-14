@@ -35,7 +35,7 @@ uv run pytest
 To check the typing in the codebase, run:
 
 ```console
-uv run mypy
+uv run check-typing
 ```
 
 To generate a code coverage report after testing locally, run:
@@ -59,7 +59,9 @@ uv run poe check-lock
 uv run poe check-format
 uv run poe check-lint
 uv run poe check-tests
-uv run poe check-typing
+uv run poe check-mypy
+uv run poe check-pyrefly
+uv run poe check-typing  # runs both check-mypy and check-pyrefly
 ```
 
 ###### For Running All Checks
