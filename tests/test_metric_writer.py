@@ -12,6 +12,7 @@ from pydantic import Field
 from pytest_mock import MockerFixture
 
 from fgmetric import Metric
+from fgmetric import MetricReader
 from fgmetric import MetricWriter
 from fgmetric import metric_writer
 
@@ -261,3 +262,133 @@ def test_writer_open_overwrites_existing_file_when_overwrite_true(tmp_path: Path
     with MetricWriter.open(FakeMetric, p, overwrite=True) as writer:
         writer.write(FakeMetric(foo="abc", bar=1))
     assert p.read_text() == "foo\tbar\nabc\t1\n"
+
+
+def test_writer_constructor_can_skip_header() -> None:
+    """A writer constructed with write_header=False writes no header row."""
+    sink = StringIO()
+    writer = MetricWriter(FakeMetric, sink, write_header=False)
+    writer.write(FakeMetric(foo="abc", bar=1))
+    assert sink.getvalue() == "abc\t1\n"
+
+
+def test_writer_append_skips_header_on_existing_file(tmp_path: Path) -> None:
+    """Appending to a file that already has a matching header does not rewrite it."""
+    p = tmp_path / "out.tsv"
+    with MetricWriter.open(FakeMetric, p, mode="w") as writer:
+        writer.write(FakeMetric(foo="a", bar=1))
+    with MetricWriter.open(FakeMetric, p, mode="a") as writer:
+        writer.write(FakeMetric(foo="b", bar=2))
+    assert p.read_text() == "foo\tbar\na\t1\nb\t2\n"
+
+
+def test_writer_append_writes_header_when_file_missing(tmp_path: Path) -> None:
+    """Append-or-create: appending to a missing file writes the header first."""
+    p = tmp_path / "out.tsv"  # does not exist
+    with MetricWriter.open(FakeMetric, p, mode="a") as writer:
+        writer.write(FakeMetric(foo="a", bar=1))
+    assert p.read_text() == "foo\tbar\na\t1\n"
+
+
+def test_writer_append_writes_header_when_file_empty(tmp_path: Path) -> None:
+    """Appending to an existing empty file writes the header first."""
+    p = tmp_path / "out.tsv"
+    p.touch()
+    with MetricWriter.open(FakeMetric, p, mode="a") as writer:
+        writer.write(FakeMetric(foo="a", bar=1))
+    assert p.read_text() == "foo\tbar\na\t1\n"
+
+
+def test_writer_append_accepts_matching_header(tmp_path: Path) -> None:
+    """Appending to a file whose header matches the metric fields succeeds."""
+    p = tmp_path / "out.tsv"
+    p.write_text("foo\tbar\n")
+    with MetricWriter.open(FakeMetric, p, mode="a") as writer:
+        writer.write(FakeMetric(foo="a", bar=1))
+    assert p.read_text() == "foo\tbar\na\t1\n"
+
+
+def test_writer_append_accepts_headerless_data_file(tmp_path: Path) -> None:
+    """Appending to a headerless file whose first row validates appends without a header."""
+    p = tmp_path / "out.tsv"
+    p.write_text("abc\t1\ndef\t2\n")  # data rows, no header
+    with MetricWriter.open(FakeMetric, p, mode="a") as writer:
+        writer.write(FakeMetric(foo="x", bar=9))
+    # The file is recognized as headerless data, so no header is injected mid-file.
+    assert p.read_text() == "abc\t1\ndef\t2\nx\t9\n"
+
+
+def test_writer_append_to_headerless_file_reads_back_with_fieldnames(tmp_path: Path) -> None:
+    """A headerless file stays headerless after appending and reads back with `fieldnames`."""
+    p = tmp_path / "out.tsv"
+    p.write_text("abc\t1\n")
+    with MetricWriter.open(FakeMetric, p, mode="a") as writer:
+        writer.write(FakeMetric(foo="x", bar=9))
+    with MetricReader.open(FakeMetric, p, fieldnames=["foo", "bar"]) as reader_:
+        assert list(reader_) == [FakeMetric(foo="abc", bar=1), FakeMetric(foo="x", bar=9)]
+
+
+def test_writer_append_raises_when_first_row_neither_header_nor_record(tmp_path: Path) -> None:
+    """Appending raises when the first row is neither the header nor a valid record."""
+    p = tmp_path / "out.tsv"
+    # `foo` accepts any string, but `bar` cannot parse as an int, so this is not a valid record;
+    # nor does it match the `foo\tbar` header.
+    p.write_text("abc\tnot_an_int\n")
+    with pytest.raises(ValueError, match="neither"):
+        with MetricWriter.open(FakeMetric, p, mode="a"):
+            pass
+
+
+def test_writer_append_raises_when_first_row_has_wrong_column_count(tmp_path: Path) -> None:
+    """A first row with the wrong number of columns is neither header nor record, so it raises."""
+    p = tmp_path / "out.tsv"
+    p.write_text("only_one_column\n")
+    with pytest.raises(ValueError, match="neither"):
+        with MetricWriter.open(FakeMetric, p, mode="a"):
+            pass
+
+
+def test_writer_open_append_does_not_touch_file_until_enter(tmp_path: Path) -> None:
+    """open(mode="a") must not read or write the file until the context is entered."""
+    p = tmp_path / "out.tsv"
+    p.write_text("foo\tbar\n")
+    MetricWriter.open(FakeMetric, p, mode="a")
+    assert p.read_text() == "foo\tbar\n"
+
+
+@pytest.mark.parametrize("suffix", ["", ".gz", ".bz2", ".xz"])
+def test_writer_append_round_trips_across_formats(tmp_path: Path, suffix: str) -> None:
+    """Write then append then read back yields all rows, header-once, for every format."""
+    p = tmp_path / f"out.tsv{suffix}"
+    with MetricWriter.open(FakeMetric, p, mode="w") as writer:
+        writer.write(FakeMetric(foo="a", bar=1))
+    with MetricWriter.open(FakeMetric, p, mode="a") as writer:
+        writer.write(FakeMetric(foo="b", bar=2))
+
+    with MetricReader.open(FakeMetric, p) as reader_:
+        got = list(reader_)
+
+    assert got == [FakeMetric(foo="a", bar=1), FakeMetric(foo="b", bar=2)]
+
+
+@pytest.mark.parametrize("suffix", ["", ".gz", ".bz2", ".xz"])
+def test_writer_append_to_empty_file_writes_header_across_formats(
+    tmp_path: Path, suffix: str
+) -> None:
+    """Append-or-create to an existing empty file writes the header first, for every format."""
+    p = tmp_path / f"out.tsv{suffix}"
+    p.touch()  # 0-byte file
+    with MetricWriter.open(FakeMetric, p, mode="a") as writer:
+        writer.write(FakeMetric(foo="a", bar=1))
+
+    with MetricReader.open(FakeMetric, p) as reader_:
+        assert list(reader_) == [FakeMetric(foo="a", bar=1)]
+
+
+def test_writer_append_concatenates_when_last_line_lacks_newline(tmp_path: Path) -> None:
+    """Appending after a newline-less last line concatenates the new row, as documented."""
+    p = tmp_path / "out.tsv"
+    p.write_text("foo\tbar\na\t1")  # header + one row, no trailing newline
+    with MetricWriter.open(FakeMetric, p, mode="a") as writer:
+        writer.write(FakeMetric(foo="b", bar=2))
+    assert p.read_text() == "foo\tbar\na\t1b\t2\n"
