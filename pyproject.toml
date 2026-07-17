@@ -36,8 +36,8 @@ classifiers     = [
 
 [dependency-groups]
 dev = [
-    "ruff==0.15.20",
-    "mypy==2.1.0",
+    "ruff==0.15.22",
+    "mypy==2.3.0",
     "pyrefly==1.1.1",
     "pytest>=8.3,<10.0",
     "pytest-cov>=6.1,<8.0",
