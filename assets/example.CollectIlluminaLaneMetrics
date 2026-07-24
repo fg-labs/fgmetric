@@ -1,0 +1,11 @@
+## htsjdk.samtools.metrics.StringHeader
+# CollectIlluminaLaneMetrics RUN_DIRECTORY=build/picard-testdata/testdata/picard/illumina/IlluminaLaneMetricsCollectorTest/tileRuns/H7BATADXX OUTPUT_DIRECTORY=build/metrics/illuminaLane OUTPUT_PREFIX=CollectIlluminaLaneMetrics QUIET=true    VERBOSITY=INFO VALIDATION_STRINGENCY=STRICT COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false USE_JDK_DEFLATER=false USE_JDK_INFLATER=false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: Wed Jun 10 13:32:31 EDT 2026
+
+## METRICS CLASS	picard.illumina.IlluminaLaneMetrics
+CLUSTER_DENSITY	LANE
+993597.96782	1
+957767.642058	2
+
+

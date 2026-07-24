@@ -127,6 +127,9 @@ venv/
 env.bak/
 venv.bak/
 
+# pixi (toolchain for assets/generate; pixi.toml + pixi.lock are committed)
+.pixi/
+
 # Spyder project settings
 .spyderproject
 .spyproject

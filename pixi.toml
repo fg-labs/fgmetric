@@ -1,0 +1,15 @@
+[workspace]
+name = "fgmetric-picard-assets"
+version = "0.1.0"
+description = "Toolchain for generating example Picard outputs (see docs/picard-example-assets.md)"
+channels = ["conda-forge", "bioconda"]
+platforms = ["osx-arm64"]
+
+[dependencies]
+openjdk = ">=17"
+picard = "*"
+r-base = "*"
+samtools = "*"
+bcftools = "*"
+minimap2 = "*"
+htslib = "*"
