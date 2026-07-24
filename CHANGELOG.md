@@ -10,6 +10,8 @@ All notable changes to this project will be documented in this file.
 - Add an `encoding` kwarg on `MetricReader.open` and `MetricWriter.open` (#43)
 - Transparent gzip/bz2/xz support via `xopen` (#44)
 - Infer the delimiter from the file extension in `MetricReader.open`/`MetricWriter.open`; pass `delimiter=` to override (#61)
+- Add a `fgmetric.picard` module for reading Picard metrics files: `PicardMetric`, `PicardMetricReader`, and the `PicardFloat`/`PicardLog10PValue`/`PicardBool` column types (#105)
+- Add an example output per metrics-producing Picard tool under `assets/`, with the generator that produced them (#104)
 
 ### Changed
 
