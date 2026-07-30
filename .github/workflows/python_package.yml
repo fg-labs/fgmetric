@@ -5,7 +5,7 @@ on:
   workflow_call:
 
 env:
-  UV_VERSION: 0.9.26
+  UV_VERSION: 0.12.0
 
 jobs:
   Tests:

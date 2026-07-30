@@ -9,7 +9,7 @@ description     = "Pydantic-backed Metric."
 readme          = "README.md"
 authors         = [{ name="Fulcrum Genomics LLC", email="contact@fulcrumgenomics.com" }]
 license         = "MIT"
-include         = ["LICENSE"]
+license-files   = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies    = [
     "pydantic>=2.11.4",
@@ -44,6 +44,7 @@ dev = [
     "pytest-mock ~=3.14",
     "poethepoet ~=0.34",
     "pre-commit ~=4.0",
+    "validate-pyproject[all] ~=0.25",
 ]
 ipython = [
     "ipython ~=9.2",
@@ -63,11 +64,12 @@ fix-all.sequence    = [
     "fix-lint"
 ]
 
-check-format  = "ruff format --check --diff"
-check-lint    = "ruff check"
-check-tests   = "pytest --ignore=tests/benchmarks"
-check-mypy    = "mypy"
-check-pyrefly = "pyrefly check"
+check-format    = "ruff format --check --diff"
+check-lint      = "ruff check"
+check-pyproject = "validate-pyproject pyproject.toml"
+check-tests     = "pytest --ignore=tests/benchmarks"
+check-mypy      = "mypy"
+check-pyrefly   = "pyrefly check"
 
 check-typing.ignore_fail = "return_non_zero"
 check-typing.sequence    = [
@@ -79,6 +81,7 @@ check-all.ignore_fail = "return_non_zero"
 check-all.sequence    = [
     "check-format",
     "check-lint",
+    "check-pyproject",
     "check-typing",
     "check-tests"
 ]
@@ -86,6 +89,7 @@ check-all.sequence    = [
 fix-and-check-all.sequence    = [
     "fix-format",
     "fix-lint",
+    "check-pyproject",
     "check-typing",
     "check-tests"
 ]
