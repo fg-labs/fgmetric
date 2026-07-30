@@ -62,7 +62,6 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
 
-    # Only needs to pull the build artifact; never touches repository contents.
     permissions:
       contents: read
 
