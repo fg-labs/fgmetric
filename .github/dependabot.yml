@@ -1,6 +1,5 @@
 version: 2
 updates:
-  # GitHub Actions — every workflow action is pinned to a commit SHA.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
