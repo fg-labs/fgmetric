@@ -1,9 +1,13 @@
 version: 2
 updates:
+  # GitHub Actions — every workflow action is pinned to a commit SHA.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    # Quarantine fresh releases so a compromised publish has time to be caught.
+    cooldown:
+      default-days: 7
     # Batch all action bumps into a single PR to reduce noise.
     groups:
       github-actions:
@@ -19,6 +23,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Same one-week quarantine as the actions ecosystem above.
+    cooldown:
+      default-days: 7
     # Library: only raise a constraint when the new locked version falls
     # outside the existing range. Keeps the `>=` floors on runtime deps
     # (pydantic, xopen) loose while still bumping the `==`-pinned dev tools.
