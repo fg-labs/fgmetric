@@ -54,6 +54,11 @@ benchmark = [
     "fgpyo ~=1.2.0",
 ]
 
+[tool.uv]
+# Must stay >= the Dependabot `cooldown` in .github/dependabot.yml, 
+# or Dependabot will propose versions that can't lock.
+exclude-newer = "1 week"
+
 [tool.poe.tasks]
 fix-format = "ruff format"
 fix-lint   = "ruff check --fix"
