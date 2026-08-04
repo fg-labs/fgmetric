@@ -1,0 +1,14 @@
+## htsjdk.samtools.metrics.StringHeader
+# QualityScoreDistribution CHART_OUTPUT=build/metrics/qs.pdf INPUT=build/example.bam OUTPUT=build/metrics/QualityScoreDistribution QUIET=true    ALIGNED_READS_ONLY=false PF_READS_ONLY=false INCLUDE_NO_CALLS=false ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO VALIDATION_STRINGENCY=STRICT COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false USE_JDK_DEFLATER=false USE_JDK_INFLATER=false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: Wed Jun 10 13:31:20 EDT 2026
+
+
+## HISTOGRAM	java.lang.Byte
+QUALITY	COUNT_OF_Q
+36	432800
+37	432800
+38	432800
+39	432800
+40	432800
+
