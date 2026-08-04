@@ -229,6 +229,44 @@ class BaseCountMetric(Metric):
 # BaseCountMetric(position=1, counts=Counter({Base.A: 10, Base.C: 5, ...}))
 ```
 
+### Picard Metrics
+
+Picard/HTSJDK metrics files are almost plain TSV, but a comment preamble precedes the header, a `## HISTOGRAM` section may follow the table, and non-finite floats and booleans use custom encodings. `fgmetric.picard` handles all three:
+
+```python
+from fgmetric.picard import PicardBool, PicardFloat, PicardMetric, PicardMetricReader
+
+
+class AlignmentSummaryMetric(PicardMetric):
+    category: str  # reads the CATEGORY column
+    total_reads: int  # TOTAL_READS
+    pct_pf_reads: PicardFloat  # PCT_PF_READS -- Picard's "?" becomes None
+
+
+path = "example.alignment_summary_metrics"
+
+with PicardMetricReader.open(AlignmentSummaryMetric, path) as reader:
+    for metric in reader:
+        print(metric.category, metric.pct_pf_reads)
+
+# Or read eagerly, as with any Metric
+metrics = AlignmentSummaryMetric.read(path)
+```
+
+Fields are declared in snake_case and read from Picard's `UPPER_SNAKE` columns. A column the model does not declare raises a `ValidationError`, which catches using the wrong metric class for a file; a column missing from the file is fine when the field has a default.
+
+Annotate columns with the types that match Picard's encodings:
+
+| Type | Reads |
+|---|---|
+| `PicardFloat` | `?` (NaN or +Infinity) and `-?` (-Infinity) become `None` |
+| `PicardLog10PValue` | as `PicardFloat`, but `-?` becomes `-inf` — for a log10 p-value, `log10(p=0)` is a real value |
+| `PicardBool` | `Y`/`N`, any case. Any other token raises, rather than silently coercing |
+
+One example output per metrics-producing Picard tool lives in [`assets/`](./assets) for reference; see [the build notes](./docs/picard-example-assets.md) for how they were generated.
+
+Reading is read-only for now: the first `## METRICS CLASS` section of a file is read, and writing Picard-formatted output is not yet supported.
+
 ## Contributing
 
 See the [contributing guide](./CONTRIBUTING.md) for development setup and testing instructions.
