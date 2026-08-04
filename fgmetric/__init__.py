@@ -1,9 +1,11 @@
 from fgmetric.metric import Metric
-from fgmetric.metric_reader import MetricReader
-from fgmetric.metric_writer import MetricWriter
+from fgmetric.model_reader import ModelReader
+from fgmetric.model_writer import ModelWriter
+from fgmetric.record_model import RecordModel
 
 __all__ = [
     "Metric",
-    "MetricReader",
-    "MetricWriter",
+    "ModelReader",
+    "ModelWriter",
+    "RecordModel",
 ]

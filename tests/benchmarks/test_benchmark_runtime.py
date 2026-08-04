@@ -17,7 +17,7 @@ NUM_ROWS: list[str] = ["1e4", "1e5"]
 @pytest.mark.parametrize("num_rows", NUM_ROWS)
 def test_fgmetric(benchmark: BenchmarkFixture, benchmark_data: Path, num_rows: str) -> None:
     from fgmetric import Metric
-    from fgmetric import MetricReader
+    from fgmetric import ModelReader
 
     class DemoMetric(Metric):
         foo: int
@@ -30,7 +30,7 @@ def test_fgmetric(benchmark: BenchmarkFixture, benchmark_data: Path, num_rows: s
     tsv = benchmark_data / f"demo.{num_rows}.tsv"
 
     def read_all() -> list[DemoMetric]:
-        with MetricReader.open(DemoMetric, tsv) as reader:
+        with ModelReader.open(DemoMetric, tsv) as reader:
             return list(reader)
 
     benchmark(read_all)

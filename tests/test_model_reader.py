@@ -8,11 +8,11 @@ from pydantic import Field
 from pydantic import ValidationError
 
 from fgmetric import Metric
-from fgmetric.metric_reader import MetricReader
+from fgmetric.model_reader import ModelReader
 
 
 class ExampleMetric(Metric):
-    """Example Metric subclass used in MetricReader tests."""
+    """Example Metric subclass used in ModelReader tests."""
 
     name: str
     value: int
@@ -20,8 +20,8 @@ class ExampleMetric(Metric):
 
 def test_reader_iterates_from_iterable() -> None:
     source = StringIO("name\tvalue\nalice\t1\nbob\t2\n")
-    reader = MetricReader(ExampleMetric, source)
-    assert_type(reader, MetricReader[ExampleMetric])
+    reader = ModelReader(ExampleMetric, source)
+    assert_type(reader, ModelReader[ExampleMetric])
     metrics = list(reader)
     assert_type(metrics, list[ExampleMetric])
     assert metrics == [
@@ -32,7 +32,7 @@ def test_reader_iterates_from_iterable() -> None:
 
 def test_reader_supports_headerless_with_fieldnames() -> None:
     source = StringIO("alice\t1\nbob\t2\n")
-    reader = MetricReader(ExampleMetric, source, fieldnames=["name", "value"])
+    reader = ModelReader(ExampleMetric, source, fieldnames=["name", "value"])
     metrics = list(reader)
     assert metrics == [
         ExampleMetric(name="alice", value=1),
@@ -43,12 +43,12 @@ def test_reader_supports_headerless_with_fieldnames() -> None:
 def test_reader_rejects_fieldnames_matching_header_at_construction() -> None:
     source = StringIO("name\tvalue\nalice\t1\n")
     with pytest.raises(ValueError, match="appears to be a header"):
-        MetricReader(ExampleMetric, source, fieldnames=["name", "value"])
+        ModelReader(ExampleMetric, source, fieldnames=["name", "value"])
 
 
 def test_reader_does_not_close_caller_handle() -> None:
     source = StringIO("name\tvalue\nalice\t1\n")
-    reader = MetricReader(ExampleMetric, source)
+    reader = ModelReader(ExampleMetric, source)
     list(reader)
     assert not source.closed
 
@@ -56,8 +56,8 @@ def test_reader_does_not_close_caller_handle() -> None:
 def test_open_reads_file(tmp_path: Path) -> None:
     p = tmp_path / "metrics.tsv"
     p.write_text("name\tvalue\nalice\t1\nbob\t2\n")
-    with MetricReader.open(ExampleMetric, p) as reader:
-        assert_type(reader, MetricReader[ExampleMetric])
+    with ModelReader.open(ExampleMetric, p) as reader:
+        assert_type(reader, ModelReader[ExampleMetric])
         metrics = list(reader)
     assert_type(metrics, list[ExampleMetric])
     assert metrics == [
@@ -68,7 +68,7 @@ def test_open_reads_file(tmp_path: Path) -> None:
 
 def test_open_does_not_open_file_until_enter(tmp_path: Path) -> None:
     p = tmp_path / "missing.tsv"
-    cm = MetricReader.open(ExampleMetric, p)
+    cm = ModelReader.open(ExampleMetric, p)
     with pytest.raises(FileNotFoundError):
         with cm:
             pass
@@ -77,16 +77,16 @@ def test_open_does_not_open_file_until_enter(tmp_path: Path) -> None:
 def test_open_requires_context_manager_usage(tmp_path: Path) -> None:
     p = tmp_path / "metrics.tsv"
     p.write_text("name\tvalue\nalice\t1\n")
-    cm = MetricReader.open(ExampleMetric, p)
+    cm = ModelReader.open(ExampleMetric, p)
     with pytest.raises(TypeError):
         list(cm)  # type: ignore[call-overload]
 
 
 def test_open_infers_delimiter_from_extension(tmp_path: Path) -> None:
-    """Test that MetricReader.open reads a .csv file as comma-delimited by default."""
+    """Test that ModelReader.open reads a .csv file as comma-delimited by default."""
     p = tmp_path / "metrics.csv"
     p.write_text("name,value\nalice,1\nbob,2\n")
-    with MetricReader.open(ExampleMetric, p) as reader:
+    with ModelReader.open(ExampleMetric, p) as reader:
         metrics = list(reader)
     assert metrics == [
         ExampleMetric(name="alice", value=1),
@@ -98,7 +98,7 @@ def test_open_explicit_delimiter_overrides_inference(tmp_path: Path) -> None:
     """Test that an explicit delimiter wins over the extension-inferred one."""
     p = tmp_path / "metrics.csv"
     p.write_text("name\tvalue\nalice\t1\n")
-    with MetricReader.open(ExampleMetric, p, delimiter="\t") as reader:
+    with ModelReader.open(ExampleMetric, p, delimiter="\t") as reader:
         metrics = list(reader)
     assert metrics == [ExampleMetric(name="alice", value=1)]
 
@@ -108,49 +108,49 @@ def test_open_raises_for_uninferrable_delimiter(tmp_path: Path) -> None:
     p = tmp_path / "metrics.dat"
     p.write_text("name\tvalue\nalice\t1\n")
     with pytest.raises(ValueError, match="Could not infer a delimiter"):
-        with MetricReader.open(ExampleMetric, p):
+        with ModelReader.open(ExampleMetric, p):
             pass
 
 
 def test_open_respects_encoding(tmp_path: Path) -> None:
-    """Test that MetricReader.open decodes the file with the specified encoding."""
+    """Test that ModelReader.open decodes the file with the specified encoding."""
     p = tmp_path / "metrics.tsv"
     p.write_bytes("name\tvalue\nrené\t1\n".encode("latin-1"))
-    with MetricReader.open(ExampleMetric, p, encoding="latin-1") as reader:
+    with ModelReader.open(ExampleMetric, p, encoding="latin-1") as reader:
         metrics = list(reader)
     assert metrics == [ExampleMetric(name="rené", value=1)]
 
 
 def test_open_raises_file_not_found_for_missing_file(tmp_path: Path) -> None:
-    """MetricReader.open raises FileNotFoundError when the file does not exist."""
+    """ModelReader.open raises FileNotFoundError when the file does not exist."""
     with pytest.raises(FileNotFoundError, match="does not exist"):
-        with MetricReader.open(ExampleMetric, tmp_path / "missing.tsv"):
+        with ModelReader.open(ExampleMetric, tmp_path / "missing.tsv"):
             pass
 
 
 def test_open_raises_file_not_found_for_missing_compressed_file(tmp_path: Path) -> None:
-    """MetricReader.open raises FileNotFoundError for a missing compressed file too."""
+    """ModelReader.open raises FileNotFoundError for a missing compressed file too."""
     with pytest.raises(FileNotFoundError, match="does not exist"):
-        with MetricReader.open(ExampleMetric, tmp_path / "missing.tsv.gz"):
+        with ModelReader.open(ExampleMetric, tmp_path / "missing.tsv.gz"):
             pass
 
 
 def test_open_raises_is_a_directory_for_directory(tmp_path: Path) -> None:
-    """MetricReader.open raises IsADirectoryError when the path is a directory."""
+    """ModelReader.open raises IsADirectoryError when the path is a directory."""
     with pytest.raises(IsADirectoryError, match="is a directory"):
-        with MetricReader.open(ExampleMetric, tmp_path):
+        with ModelReader.open(ExampleMetric, tmp_path):
             pass
 
 
 def test_open_raises_permission_error_for_unreadable_file(
     tmp_path: Path, chmod: Callable[[Path, int], None]
 ) -> None:
-    """MetricReader.open raises PermissionError when the file is not readable."""
+    """ModelReader.open raises PermissionError when the file is not readable."""
     p = tmp_path / "metrics.tsv"
     p.write_text("name\tvalue\nalice\t1\n")
     chmod(p, 0o000)
     with pytest.raises(PermissionError, match="not readable"):
-        with MetricReader.open(ExampleMetric, p):
+        with ModelReader.open(ExampleMetric, p):
             pass
 
 
@@ -225,7 +225,7 @@ def test_open_tsv(tmp_path: Path) -> None:
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\nfoo\t1\n")
 
-    with MetricReader.open(SimpleMetric, fpath) as reader:
+    with ModelReader.open(SimpleMetric, fpath) as reader:
         metrics = list(reader)
 
     assert len(metrics) == 1
@@ -238,7 +238,7 @@ def test_open_csv(tmp_path: Path) -> None:
     fpath = tmp_path / "metrics.csv"
     fpath.write_text("name,count\nfoo,1\n")
 
-    with MetricReader.open(SimpleMetric, fpath, delimiter=",") as reader:
+    with ModelReader.open(SimpleMetric, fpath, delimiter=",") as reader:
         metrics = list(reader)
 
     assert len(metrics) == 1
@@ -247,11 +247,11 @@ def test_open_csv(tmp_path: Path) -> None:
 
 
 def test_open_yields_correct_type(tmp_path: Path) -> None:
-    """Test that MetricReader yields instances of the correct Metric subclass."""
+    """Test that ModelReader yields instances of the correct Metric subclass."""
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\nfoo\t1\n")
 
-    with MetricReader.open(SimpleMetric, fpath) as reader:
+    with ModelReader.open(SimpleMetric, fpath) as reader:
         for metric in reader:
             assert_type(metric, SimpleMetric)
             assert isinstance(metric, SimpleMetric)
@@ -262,7 +262,7 @@ def test_open_multiple_rows(tmp_path: Path) -> None:
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\nfoo\t1\nbar\t2\nbaz\t3\n")
 
-    with MetricReader.open(SimpleMetric, fpath) as reader:
+    with ModelReader.open(SimpleMetric, fpath) as reader:
         metrics = list(reader)
 
     assert len(metrics) == 3
@@ -284,7 +284,7 @@ def test_open_coerces_string_to_int(tmp_path: Path) -> None:
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\nfoo\t42\n")
 
-    with MetricReader.open(SimpleMetric, fpath) as reader:
+    with ModelReader.open(SimpleMetric, fpath) as reader:
         metrics = list(reader)
 
     assert metrics[0].count == 42
@@ -296,7 +296,7 @@ def test_open_coerces_string_to_float(tmp_path: Path) -> None:
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tscore\nfoo\t3.14\n")
 
-    with MetricReader.open(MetricWithFloat, fpath) as reader:
+    with ModelReader.open(MetricWithFloat, fpath) as reader:
         metrics = list(reader)
 
     assert metrics[0].score == pytest.approx(3.14)
@@ -308,7 +308,7 @@ def test_open_coerces_string_to_bool(tmp_path: Path) -> None:
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tis_active\nfoo\ttrue\nbar\tfalse\n")
 
-    with MetricReader.open(MetricWithBool, fpath) as reader:
+    with ModelReader.open(MetricWithBool, fpath) as reader:
         metrics = list(reader)
 
     assert metrics[0].is_active is True
@@ -325,7 +325,7 @@ def test_open_empty_field_becomes_none(tmp_path: Path) -> None:
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tvalue\nfoo\t\n")
 
-    with MetricReader.open(MetricWithOptional, fpath) as reader:
+    with ModelReader.open(MetricWithOptional, fpath) as reader:
         metrics = list(reader)
 
     assert metrics[0].value is None
@@ -336,7 +336,7 @@ def test_open_empty_field_with_optional_type(tmp_path: Path) -> None:
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tvalue\nfoo\t\nbar\t42\n")
 
-    with MetricReader.open(MetricWithOptional, fpath) as reader:
+    with ModelReader.open(MetricWithOptional, fpath) as reader:
         metrics = list(reader)
 
     assert metrics[0].value is None
@@ -349,7 +349,7 @@ def test_open_empty_field_with_required_type_raises(tmp_path: Path) -> None:
     fpath.write_text("name\tcount\nfoo\t\n")
 
     with pytest.raises(ValidationError):
-        with MetricReader.open(SimpleMetric, fpath) as reader:
+        with ModelReader.open(SimpleMetric, fpath) as reader:
             list(reader)
 
 
@@ -364,7 +364,7 @@ def test_open_handles_utf8_bom(tmp_path: Path) -> None:
     # Write file with BOM prefix
     fpath.write_bytes(b"\xef\xbb\xbfname\tcount\nfoo\t1\n")
 
-    with MetricReader.open(SimpleMetric, fpath) as reader:
+    with ModelReader.open(SimpleMetric, fpath) as reader:
         metrics = list(reader)
 
     assert len(metrics) == 1
@@ -383,7 +383,7 @@ def test_open_with_field_alias(tmp_path: Path) -> None:
     # Header uses alias "count" instead of field name "read_count"
     fpath.write_text("name\tcount\nfoo\t100\n")
 
-    with MetricReader.open(MetricWithAlias, fpath) as reader:
+    with ModelReader.open(MetricWithAlias, fpath) as reader:
         metrics = list(reader)
 
     assert metrics[0].name == "foo"
@@ -400,7 +400,7 @@ def test_open_empty_file_no_rows(tmp_path: Path) -> None:
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\n")
 
-    with MetricReader.open(SimpleMetric, fpath) as reader:
+    with ModelReader.open(SimpleMetric, fpath) as reader:
         metrics = list(reader)
 
     assert len(metrics) == 0
@@ -411,7 +411,7 @@ def test_open_file_not_found_raises(tmp_path: Path) -> None:
     fpath = tmp_path / "does_not_exist.tsv"
 
     with pytest.raises(FileNotFoundError):
-        with MetricReader.open(SimpleMetric, fpath):
+        with ModelReader.open(SimpleMetric, fpath):
             pass
 
 
@@ -427,7 +427,7 @@ def test_open_missing_required_field_raises(tmp_path: Path) -> None:
     fpath.write_text("name\nfoo\n")
 
     with pytest.raises(ValidationError):
-        with MetricReader.open(SimpleMetric, fpath) as reader:
+        with ModelReader.open(SimpleMetric, fpath) as reader:
             list(reader)
 
 
@@ -437,7 +437,7 @@ def test_open_invalid_type_raises(tmp_path: Path) -> None:
     fpath.write_text("name\tcount\nfoo\tnot_an_int\n")
 
     with pytest.raises(ValidationError):
-        with MetricReader.open(SimpleMetric, fpath) as reader:
+        with ModelReader.open(SimpleMetric, fpath) as reader:
             list(reader)
 
 
@@ -446,7 +446,7 @@ def test_open_extra_columns_ignored(tmp_path: Path) -> None:
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\tcount\textra\nfoo\t1\tignored\n")
 
-    with MetricReader.open(SimpleMetric, fpath) as reader:
+    with ModelReader.open(SimpleMetric, fpath) as reader:
         metrics = list(reader)
 
     assert len(metrics) == 1
@@ -466,7 +466,7 @@ def test_open_headerless_with_fieldnames(tmp_path: Path) -> None:
     # Three data rows, no header
     fpath.write_text("foo\t1\nbar\t2\nbaz\t3\n")
 
-    with MetricReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]) as reader:
+    with ModelReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]) as reader:
         metrics = list(reader)
 
     assert [m.name for m in metrics] == ["foo", "bar", "baz"]
@@ -478,7 +478,7 @@ def test_open_headerless_with_alias(tmp_path: Path) -> None:
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("foo\t100\n")
 
-    with MetricReader.open(MetricWithAlias, fpath, fieldnames=["name", "count"]) as reader:
+    with ModelReader.open(MetricWithAlias, fpath, fieldnames=["name", "count"]) as reader:
         metrics = list(reader)
 
     assert metrics[0].name == "foo"
@@ -491,7 +491,7 @@ def test_open_headerless_missing_required_field_raises(tmp_path: Path) -> None:
     fpath.write_text("foo\n")
 
     with pytest.raises(ValidationError):
-        with MetricReader.open(SimpleMetric, fpath, fieldnames=["name"]) as reader:
+        with ModelReader.open(SimpleMetric, fpath, fieldnames=["name"]) as reader:
             list(reader)
 
 
@@ -502,7 +502,7 @@ def test_open_headerless_row_missing_column_raises(tmp_path: Path) -> None:
     fpath.write_text("foo\n")
 
     with pytest.raises(ValidationError):
-        with MetricReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]) as reader:
+        with ModelReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]) as reader:
             list(reader)
 
 
@@ -513,7 +513,7 @@ def test_open_headerless_short_row_among_valid_rows_raises(tmp_path: Path) -> No
     fpath.write_text("foo\t1\nbar\nbaz\t3\n")
 
     with pytest.raises(ValidationError):
-        with MetricReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]) as reader:
+        with ModelReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]) as reader:
             list(reader)
 
 
@@ -523,7 +523,7 @@ def test_open_headerless_row_extra_column_ignored(tmp_path: Path) -> None:
     # Row has an extra value not covered by fieldnames
     fpath.write_text("foo\t1\textra\n")
 
-    with MetricReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]) as reader:
+    with ModelReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]) as reader:
         metrics = list(reader)
 
     assert len(metrics) == 1
@@ -538,7 +538,7 @@ def test_open_headerless_detects_header_row_raises(tmp_path: Path) -> None:
     fpath.write_text("name\tcount\nfoo\t1\n")
 
     with pytest.raises(ValueError, match="header"):
-        with MetricReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]):
+        with ModelReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]):
             pass
 
 
@@ -549,7 +549,7 @@ def test_open_headerless_first_row_coincidentally_matching_value_is_data(
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("name\t1\nbar\t2\n")
 
-    with MetricReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]) as reader:
+    with ModelReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]) as reader:
         metrics = list(reader)
 
     assert [m.name for m in metrics] == ["name", "bar"]
@@ -564,7 +564,7 @@ def test_open_headerless_detects_header_row_with_aliased_field_raises(tmp_path: 
     fpath.write_text("name\tcount\nfoo\t1\n")
 
     with pytest.raises(ValueError, match="header"):
-        with MetricReader.open(MetricWithAlias, fpath, fieldnames=["name", "count"]):
+        with ModelReader.open(MetricWithAlias, fpath, fieldnames=["name", "count"]):
             pass
 
 
@@ -573,7 +573,7 @@ def test_open_headerless_empty_file(tmp_path: Path) -> None:
     fpath = tmp_path / "metrics.tsv"
     fpath.write_text("")
 
-    with MetricReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]) as reader:
+    with ModelReader.open(SimpleMetric, fpath, fieldnames=["name", "count"]) as reader:
         metrics = list(reader)
 
     assert metrics == []
@@ -595,7 +595,7 @@ def test_open_parent_class_discards_subclass_fields(tmp_path: Path) -> None:
     # File has columns for ChildMetric but we read with ParentMetric
     fpath.write_text("name\tvalue\textra_field\tanother_field\nfoo\t42\textra\t99\n")
 
-    with MetricReader.open(ParentMetric, fpath) as reader:
+    with ModelReader.open(ParentMetric, fpath) as reader:
         metrics = list(reader)
 
     assert len(metrics) == 1

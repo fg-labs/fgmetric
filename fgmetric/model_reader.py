@@ -14,12 +14,15 @@ from fgmetric._delimiter import infer_delimiter
 from fgmetric._paths import path_read_error
 
 if TYPE_CHECKING:
-    from fgmetric.metric import Metric
+    from fgmetric.record_model import RecordModel
+
+DEFAULT_ENCODING = "utf-8-sig"
+"""Default read encoding; strips a UTF-8 BOM so Excel-exported CSVs open cleanly."""
 
 
-class MetricReader[T: Metric]:
+class ModelReader[T: RecordModel]:
     """
-    Iterate `Metric` instances from a text IO source.
+    Iterate `RecordModel` instances from a text IO source.
 
     Constructed with any iterable of strings (file handle, StringIO, list of
     lines). The reader does not own the source; callers manage its lifecycle.
@@ -27,21 +30,21 @@ class MetricReader[T: Metric]:
     construction, `open` owns the file it opens and closes it on context exit.
     """
 
-    _metric_class: type[T]
+    _model_class: type[T]
     _records: Iterator[dict[str, str | None]]
 
     def __init__(
         self,
-        metric_class: type[T],
+        model_class: type[T],
         source: Iterable[str],
         delimiter: str = "\t",
         fieldnames: Sequence[str] | None = None,
     ) -> None:
         """
-        Initialize a new `MetricReader`.
+        Initialize a new `ModelReader`.
 
         Args:
-            metric_class: Metric class.
+            model_class: The `RecordModel` subclass to validate each row into.
             source: An iterable of strings (e.g., file handle, StringIO) to read from.
             delimiter: The input file delimiter.
             fieldnames: Optional sequence of field names. If provided, the input is treated as
@@ -51,7 +54,7 @@ class MetricReader[T: Metric]:
             ValueError: If `fieldnames` is supplied and the first row appears to be a header
                 that matches it.
         """
-        self._metric_class = metric_class
+        self._model_class = model_class
         records: Iterator[dict[str, str | None]] = DictReader(
             source,
             fieldnames=fieldnames,
@@ -74,17 +77,17 @@ class MetricReader[T: Metric]:
     @contextmanager
     def open(
         cls,
-        metric_class: type[T],
+        model_class: type[T],
         path: Path | str,
         delimiter: str | None = None,
         fieldnames: Sequence[str] | None = None,
-        encoding: str = "utf-8-sig",
+        encoding: str = DEFAULT_ENCODING,
     ) -> Iterator[Self]:
         """
-        Open `path` and yield a `MetricReader` over its contents.
+        Open `path` and yield a `ModelReader` over its contents.
 
         This is a context manager: bind it in a `with` statement and iterate the reader it
-        yields. `reader = MetricReader.open(...)` without `with` binds the context manager
+        yields. `reader = ModelReader.open(...)` without `with` binds the context manager
         itself, not a reader, so it will not iterate.
 
         The file is opened with the given encoding and closed on context exit. The default encoding,
@@ -94,7 +97,7 @@ class MetricReader[T: Metric]:
         files are transparently decompressed.
 
         Args:
-            metric_class: Metric class.
+            model_class: The `RecordModel` subclass to validate each row into.
             path: Filesystem path to the input file.
             delimiter: The input file delimiter. When `None` (the default), the delimiter is
                 inferred from the file extension: `.csv` → comma; `.tsv`, `.txt`, `.tab`, or
@@ -106,7 +109,7 @@ class MetricReader[T: Metric]:
             encoding: The text encoding used to decode the file.
 
         Yields:
-            A `MetricReader` over the opened file.
+            A `ModelReader` over the opened file.
 
         Raises:
             FileNotFoundError: If `path` does not exist.
@@ -117,7 +120,7 @@ class MetricReader[T: Metric]:
 
         Example:
             ```python
-            with MetricReader.open(AlignmentMetric, "metrics.txt") as reader:
+            with ModelReader.open(AlignmentMetric, "metrics.txt") as reader:
                 for metric in reader:
                     ...
             ```
@@ -127,10 +130,10 @@ class MetricReader[T: Metric]:
         if delimiter is None:
             delimiter = infer_delimiter(path)
         with xopen(path, mode="rt", encoding=encoding) as handle:
-            yield cls(metric_class, handle, delimiter, fieldnames)
+            yield cls(model_class, handle, delimiter, fieldnames)
 
     def __iter__(self) -> Self:
         return self
 
     def __next__(self) -> T:
-        return self._metric_class.model_validate(next(self._records))
+        return self._model_class.model_validate(next(self._records))
